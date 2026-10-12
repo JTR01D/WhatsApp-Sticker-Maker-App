@@ -79,6 +79,17 @@
             android:textStyle="bold"
             tools:text="• 🖼️ 1,115 imágenes estáticas" />
 
+        <TextView
+            android:id="@+id/tvDuplicatesBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/tonal_green_text"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:visibility="visible"
+            tools:text="• 🧹 33 stickers duplicados omitidos" />
+
     </LinearLayout>
 
     <TextView

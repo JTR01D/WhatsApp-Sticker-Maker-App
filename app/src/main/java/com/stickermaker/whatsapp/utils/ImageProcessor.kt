@@ -13,7 +13,14 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.security.MessageDigest
 import kotlin.math.min
+
+data class StickerInspectionResult(
+    val isValidWebP: Boolean,
+    val isAnimated: Boolean,
+    val checksum: String
+)
 
 object ImageProcessor {
 
@@ -109,10 +116,77 @@ object ImageProcessor {
                 }
                 false
             } ?: false
-        } catch (e: Exception) {
-            false
-        }
-    }
+    /**
+     * Inspects a WebP file in a single fast stream pass:
+     * - Validates RIFF...WEBP header
+     * - Detects if it's animated or static
+     * - Computes an MD5 checksum of the entire file to accurately detect duplicates
+     */
+     fun inspectWebP(context: Context, sourceUri: Uri): StickerInspectionResult {
+         return try {
+             openStream(context, sourceUri)?.use { stream ->
+                 val digest = MessageDigest.getInstance("MD5")
+                 val buffer = ByteArray(8192)
+                 var bytesRead: Int
+                 var totalBytes = 0
+                 val header = ByteArray(4096)
+                 var headerBytes = 0
+
+                 while (stream.read(buffer).also { bytesRead = it } != -1) {
+                     digest.update(buffer, 0, bytesRead)
+                     if (headerBytes < header.size) {
+                         val toCopy = minOf(bytesRead, header.size - headerBytes)
+                         System.arraycopy(buffer, 0, header, headerBytes, toCopy)
+                         headerBytes += toCopy
+                     }
+                     totalBytes += bytesRead
+                 }
+
+                 if (totalBytes < 12) {
+                     return StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
+                 }
+
+                 val isRiff = header[0] == 'R'.code.toByte() &&
+                              header[1] == 'I'.code.toByte() &&
+                              header[2] == 'F'.code.toByte() &&
+                              header[3] == 'F'.code.toByte()
+                 val isWebp = header[8] == 'W'.code.toByte() &&
+                              header[9] == 'E'.code.toByte() &&
+                              header[10] == 'B'.code.toByte() &&
+                              header[11] == 'P'.code.toByte()
+
+                 if (!isRiff || !isWebp) {
+                     return StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
+                 }
+
+                 var isAnim = false
+                 if (headerBytes >= 21) {
+                     val isVp8x = header[12] == 'V'.code.toByte() &&
+                                  header[13] == 'P'.code.toByte() &&
+                                  header[14] == '8'.code.toByte() &&
+                                  header[15] == 'X'.code.toByte()
+                     if (isVp8x && (header[20].toInt() and 0x02) != 0) {
+                         isAnim = true
+                     } else {
+                         for (i in 12 until headerBytes - 3) {
+                             if (header[i] == 'A'.code.toByte() &&
+                                 header[i + 1] == 'N'.code.toByte() &&
+                                 header[i + 2] == 'I'.code.toByte() &&
+                                 header[i + 3] == 'M'.code.toByte()) {
+                                 isAnim = true
+                                 break
+                             }
+                         }
+                     }
+                 }
+
+                 val hash = digest.digest().joinToString("") { "%02x".format(it) }
+                 StickerInspectionResult(isValidWebP = true, isAnimated = isAnim, checksum = hash)
+             } ?: StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
+         } catch (e: Exception) {
+             StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
+         }
+     }
 
     /**
      * Strictly processes a WebP sticker image.

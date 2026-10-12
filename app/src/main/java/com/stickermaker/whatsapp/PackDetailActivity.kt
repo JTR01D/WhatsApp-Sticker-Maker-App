@@ -383,45 +383,64 @@ class PackDetailActivity : AppCompatActivity() {
     }
 
     private suspend fun importUrisBatch(allUris: List<Uri>) {
-        val validUris = allUris.filter { ImageProcessor.isStrictlyWebP(this@PackDetailActivity, it) }
-        val invalidCount = allUris.size - validUris.size
-
-        if (validUris.isEmpty()) {
+        if (allUris.isEmpty()) {
             withContext(Dispatchers.Main) {
                 binding.layoutProcessing.visibility = View.GONE
                 setControlsEnabled(true)
-                Toast.makeText(
-                    this@PackDetailActivity,
-                    "No se encontraron stickers .webp válidos",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(this@PackDetailActivity, "No se seleccionaron archivos", Toast.LENGTH_SHORT).show()
             }
             return
         }
 
-        val totalCount = validUris.size
+        val totalCount = allUris.size
         val staticUris = mutableListOf<Uri>()
         val animatedUris = mutableListOf<Uri>()
+        val seenChecksums = mutableSetOf<String>()
+        var duplicatesCount = 0
+        var invalidCount = 0
 
         withContext(Dispatchers.Main) {
-            binding.tvProcessingStatus.text = "Escaneando $totalCount stickers (estáticos y con movimiento)..."
+            binding.tvProcessingStatus.text = "Analizando $totalCount stickers y detectando duplicados..."
             binding.progressBarImport.progress = 0
         }
 
-        for ((index, uri) in validUris.withIndex()) {
-            if (ImageProcessor.isAnimatedWebP(this@PackDetailActivity, uri)) {
-                animatedUris.add(uri)
+        for ((index, uri) in allUris.withIndex()) {
+            val inspection = ImageProcessor.inspectWebP(this@PackDetailActivity, uri)
+            if (!inspection.isValidWebP) {
+                invalidCount++
+            } else if (seenChecksums.contains(inspection.checksum)) {
+                // Sticker duplicado idéntico omitido
+                duplicatesCount++
             } else {
-                staticUris.add(uri)
+                seenChecksums.add(inspection.checksum)
+                if (inspection.isAnimated) {
+                    animatedUris.add(uri)
+                } else {
+                    staticUris.add(uri)
+                }
             }
-            if (index % 20 == 0) {
+
+            if (index % 25 == 0 || index == totalCount - 1) {
                 val percent = (index * 100) / totalCount
                 withContext(Dispatchers.Main) {
                     binding.progressBarImport.progress = percent
+                    binding.tvProcessingStatus.text = "Analizando stickers ($index de $totalCount)..."
                 }
                 yield()
             }
         }
+
+        if (staticUris.isEmpty() && animatedUris.isEmpty()) {
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                setControlsEnabled(true)
+                val msg = if (duplicatesCount > 0) "Todos los stickers analizados eran copias duplicadas" else "No se encontraron stickers .webp válidos"
+                Toast.makeText(this@PackDetailActivity, msg, Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+
+        val uniqueTotal = animatedUris.size + staticUris.size
 
         // Ask the user what they want to import if both types are detected
         val choice: Int = if (staticUris.isNotEmpty() && animatedUris.isNotEmpty()) {
@@ -429,14 +448,21 @@ class PackDetailActivity : AppCompatActivity() {
                 binding.layoutProcessing.visibility = View.GONE
                 suspendCancellableCoroutine { continuation ->
                     val dialogBinding = DialogImportChoiceBinding.inflate(layoutInflater)
-                    val totalFound = animatedUris.size + staticUris.size
 
-                    dialogBinding.tvScanSubtitle.text = "$totalFound stickers encontrados en total"
+                    dialogBinding.tvScanSubtitle.text = "$uniqueTotal stickers únicos listos para procesar"
                     dialogBinding.tvAnimatedCountBadge.text = "• 🎬 ${animatedUris.size} con movimiento (animados)"
                     dialogBinding.tvStaticCountBadge.text = "• 🖼️ ${staticUris.size} imágenes fijas (estáticas)"
+
+                    if (duplicatesCount > 0) {
+                        dialogBinding.tvDuplicatesBadge.visibility = View.VISIBLE
+                        dialogBinding.tvDuplicatesBadge.text = "• 🧹 $duplicatesCount stickers duplicados omitidos automáticamente"
+                    } else {
+                        dialogBinding.tvDuplicatesBadge.visibility = View.GONE
+                    }
+
                     dialogBinding.tvTitleAnimated.text = "Solo con Movimiento (${animatedUris.size})"
                     dialogBinding.tvTitleStatic.text = "Solo Estáticos (${staticUris.size})"
-                    dialogBinding.tvTitleBoth.text = "Importar Todos ($totalFound)"
+                    dialogBinding.tvTitleBoth.text = "Importar Todos ($uniqueTotal)"
 
                     val dialog = MaterialAlertDialogBuilder(this@PackDetailActivity)
                         .setView(dialogBinding.root)
@@ -658,6 +684,7 @@ class PackDetailActivity : AppCompatActivity() {
                 append("¡Stickers importados con éxito!\n\n")
                 if (addedAnimated > 0) append("• 🎬 $addedAnimated con movimiento (animados)\n")
                 if (addedStatic > 0) append("• 🖼️ $addedStatic estáticos\n")
+                if (duplicatesCount > 0) append("• 🧹 $duplicatesCount stickers duplicados omitidos automáticamente\n")
                 if (invalidCount > 0) append("• ⚠️ $invalidCount archivos omitidos (no eran .webp)\n")
                 if (createdExtraPacks > 0) {
                     append("\n📦 Se crearon $createdExtraPacks paquete(s) adicional(es) para cumplir con el límite de WhatsApp (máximo 30 stickers por paquete).")
