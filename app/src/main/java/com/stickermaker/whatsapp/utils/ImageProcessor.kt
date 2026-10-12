@@ -116,6 +116,11 @@ object ImageProcessor {
                 }
                 false
             } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     /**
      * Inspects a WebP file in a single fast stream pass:
      * - Validates RIFF...WEBP header
