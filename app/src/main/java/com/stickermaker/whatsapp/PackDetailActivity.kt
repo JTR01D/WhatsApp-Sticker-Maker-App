@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
+import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
@@ -110,9 +111,14 @@ class PackDetailActivity : AppCompatActivity() {
             showAddOptionsDialog()
         }
 
+        // Direct button: WhatsApp Official
+        binding.btnImportWhatsApp.setOnClickListener {
+            checkAndImportWhatsAppStickersFolder()
+        }
+
         // Direct button: Import Folder
         binding.btnImportFolder.setOnClickListener {
-            showAddOptionsDialog()
+            launchFolderPicker()
         }
 
         // Direct button: Import Files
@@ -246,14 +252,16 @@ class PackDetailActivity : AppCompatActivity() {
         when {
             stickerCount < 3 -> {
                 val needed = 3 - stickerCount
-                binding.tvDetailStatus.text = "Faltan $needed stickers para el mínimo de WhatsApp"
+                binding.tvDetailStatus.text = "⚠️ Faltan $needed stickers para WhatsApp"
                 binding.tvDetailStatus.setTextColor(ContextCompat.getColor(this, R.color.badge_warning))
+                binding.layoutStatusBadge.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.badge_container))
                 binding.btnDetailAddToWhatsApp.isEnabled = false
-                binding.btnDetailAddToWhatsApp.alpha = 0.6f
+                binding.btnDetailAddToWhatsApp.alpha = 0.5f
             }
             else -> {
-                binding.tvDetailStatus.text = "✓ Listo para importar a WhatsApp"
+                binding.tvDetailStatus.text = "✓ Listo para añadir a WhatsApp"
                 binding.tvDetailStatus.setTextColor(ContextCompat.getColor(this, R.color.badge_success))
+                binding.layoutStatusBadge.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.badge_success_container))
                 binding.btnDetailAddToWhatsApp.isEnabled = true
                 binding.btnDetailAddToWhatsApp.alpha = 1.0f
             }

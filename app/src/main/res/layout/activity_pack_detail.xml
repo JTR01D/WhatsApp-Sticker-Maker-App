@@ -9,14 +9,15 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:elevation="4dp">
+        app:elevation="2dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/primary"
-            app:navigationIcon="@drawable/ic_sticker_pack"
+            app:navigationIcon="@drawable/ic_arrow_back"
+            app:navigationIconTint="@color/white"
             app:title="Detalle del Paquete"
             app:titleTextColor="@color/white" />
 
@@ -39,7 +40,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="@color/surface_light"
-                app:cardCornerRadius="16dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="2dp"
                 app:strokeColor="@color/card_stroke"
                 app:strokeWidth="1dp">
@@ -58,9 +59,9 @@
 
                         <com.google.android.material.imageview.ShapeableImageView
                             android:id="@+id/imgDetailTray"
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            android:background="#EDF2F7"
+                            android:layout_width="60dp"
+                            android:layout_height="60dp"
+                            android:background="@color/thumbnail_bg"
                             android:padding="4dp"
                             android:scaleType="fitCenter"
                             android:src="@drawable/ic_sticker_pack"
@@ -69,7 +70,7 @@
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginStart="14dp"
                             android:layout_weight="1"
                             android:orientation="vertical">
 
@@ -78,27 +79,39 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:textColor="@color/text_primary"
-                                android:textSize="18sp"
+                                android:textSize="19sp"
                                 android:textStyle="bold"
-                                tools:text="Mis Memes" />
+                                tools:text="Mis Stickers" />
 
                             <TextView
                                 android:id="@+id/tvDetailPublisher"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
                                 android:textColor="@color/text_secondary"
-                                android:textSize="14sp"
+                                android:textSize="13sp"
                                 tools:text="Por Juan" />
 
-                            <TextView
-                                android:id="@+id/tvDetailStatus"
+                            <LinearLayout
+                                android:id="@+id/layoutStatusBadge"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:textColor="@color/badge_warning"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                tools:text="Mínimo 3 stickers requeridos" />
+                                android:layout_marginTop="6dp"
+                                android:background="@drawable/bg_badge_rounded"
+                                android:gravity="center_vertical"
+                                android:paddingHorizontal="10dp"
+                                android:paddingVertical="4dp">
+
+                                <TextView
+                                    android:id="@+id/tvDetailStatus"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="@color/badge_warning"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    tools:text="Faltan 3 stickers para el mínimo" />
+
+                            </LinearLayout>
 
                         </LinearLayout>
 
@@ -109,16 +122,16 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:backgroundTint="@color/accent_whatsapp"
-                        android:paddingVertical="12dp"
+                        android:backgroundTint="@color/btn_whatsapp_bg"
+                        android:paddingVertical="13dp"
                         android:text="@string/add_to_whatsapp"
-                        android:textColor="@color/white"
+                        android:textColor="@color/btn_whatsapp_text"
                         android:textSize="15sp"
                         android:textStyle="bold"
-                        app:cornerRadius="12dp"
+                        app:cornerRadius="14dp"
                         app:icon="@drawable/ic_whatsapp"
                         app:iconGravity="textStart"
-                        app:iconTint="@color/white" />
+                        app:iconTint="@color/btn_whatsapp_text" />
 
                 </LinearLayout>
 
@@ -128,10 +141,10 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="14dp"
                 app:cardBackgroundColor="@color/surface_light"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="1dp"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="2dp"
                 app:strokeColor="@color/card_stroke"
                 app:strokeWidth="1dp">
 
@@ -144,44 +157,78 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📥 Importar Stickers (Solo formato .webp)"
+                        android:text="📥 Importar Stickers (.webp)"
                         android:textColor="@color/text_primary"
-                        android:textSize="14sp"
+                        android:textSize="15sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Selecciona una carpeta completa o archivos .webp individuales desde cualquier ubicación de tu teléfono."
+                        android:text="Agrega stickers desde WhatsApp Oficial o desde el almacenamiento:"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
-                    <LinearLayout
+                    <!-- Primary WhatsApp Official Import Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnImportWhatsApp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
+                        android:backgroundTint="@color/tonal_green_bg"
+                        android:paddingVertical="11dp"
+                        android:text="💬 WhatsApp Stickers Oficial (Detectar)"
+                        android:textColor="@color/tonal_green_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="12dp"
+                        app:icon="@drawable/ic_whatsapp"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/tonal_green_text"
+                        app:strokeColor="@color/accent_whatsapp"
+                        app:strokeWidth="1dp" />
+
+                    <!-- Folder and Files Buttons -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
                         android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnImportFolder"
-                            style="@style/Widget.Material3.Button.TonalButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="6dp"
                             android:layout_weight="1"
-                            android:text="📁 Carpeta"
-                            android:textSize="13sp" />
+                            android:backgroundTint="@color/tonal_green_bg"
+                            android:paddingVertical="10dp"
+                            android:text="Carpeta"
+                            android:textColor="@color/tonal_green_text"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="12dp"
+                            app:icon="@drawable/ic_folder"
+                            app:iconGravity="textStart"
+                            app:iconTint="@color/tonal_green_text" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnImportFiles"
-                            style="@style/Widget.Material3.Button.TonalButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
-                            android:text="🖼️ Archivos"
-                            android:textSize="13sp" />
+                            android:backgroundTint="@color/tonal_green_bg"
+                            android:paddingVertical="10dp"
+                            android:text="Archivos"
+                            android:textColor="@color/tonal_green_text"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="12dp"
+                            app:icon="@drawable/ic_photo"
+                            app:iconGravity="textStart"
+                            app:iconTint="@color/tonal_green_text" />
 
                     </LinearLayout>
 
@@ -195,9 +242,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:background="#E6FFFA"
+                android:background="@drawable/bg_badge_rounded"
+                android:backgroundTint="@color/tonal_green_bg"
                 android:orientation="vertical"
-                android:padding="12dp"
+                android:padding="14dp"
                 android:visibility="gone"
                 tools:visibility="visible">
 
@@ -211,7 +259,8 @@
                         android:id="@+id/progressSpinner"
                         android:layout_width="22dp"
                         android:layout_height="22dp"
-                        android:indeterminate="true" />
+                        android:indeterminate="true"
+                        android:indeterminateTint="@color/accent_whatsapp" />
 
                     <TextView
                         android:id="@+id/tvProcessingStatus"
@@ -219,7 +268,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="12dp"
                         android:text="Procesando archivos .webp…"
-                        android:textColor="#234E52"
+                        android:textColor="@color/tonal_green_text"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -229,11 +278,11 @@
                     android:id="@+id/progressBarImport"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="10dp"
                     android:max="100"
                     android:progress="0"
                     app:indicatorColor="@color/accent_whatsapp"
-                    app:trackColor="#B2F5EA" />
+                    app:trackColor="@color/card_stroke" />
 
             </LinearLayout>
 
@@ -286,16 +335,18 @@
                 tools:visibility="visible">
 
                 <ImageView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:alpha="0.4"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:background="@drawable/bg_circle_tinted"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_sticker_pack" />
+                    android:padding="16dp"
+                    android:src="@drawable/ic_sticker_pack"
+                    app:tint="@color/accent_whatsapp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="14dp"
                     android:text="No hay stickers en este paquete"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
@@ -306,7 +357,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="Importa una carpeta o archivos .webp para agregarlos a WhatsApp (mínimo 3)."
+                    android:text="Importa desde WhatsApp Oficial, una carpeta o archivos para agregarlos a WhatsApp (mínimo 3)."
                     android:textColor="@color/text_secondary"
                     android:textSize="13sp" />
 
@@ -315,7 +366,7 @@
             <!-- Bottom spacing for FAB -->
             <View
                 android:layout_width="match_parent"
-                android:layout_height="80dp" />
+                android:layout_height="88dp" />
 
         </LinearLayout>
 
@@ -327,11 +378,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:backgroundTint="@color/primary"
+        android:layout_margin="20dp"
+        android:backgroundTint="@color/accent_whatsapp"
+        android:elevation="6dp"
         android:text="@string/add_stickers"
-        android:textColor="@color/white"
+        android:textColor="@color/fab_tint"
+        android:textStyle="bold"
+        app:cornerRadius="28dp"
         app:icon="@drawable/ic_add"
-        app:iconTint="@color/white" />
+        app:iconTint="@color/fab_tint" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

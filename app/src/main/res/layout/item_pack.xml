@@ -28,7 +28,7 @@
                 android:id="@+id/imgTrayIcon"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="#EDF2F7"
+                android:background="@color/thumbnail_bg"
                 android:padding="4dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_sticker_pack"
@@ -66,7 +66,8 @@
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/delete"
-                android:src="@drawable/ic_delete" />
+                android:src="@drawable/ic_delete"
+                app:tint="@color/text_secondary" />
 
         </LinearLayout>
 
@@ -84,7 +85,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginEnd="8dp"
-                android:background="#F7FAFC"
+                android:background="@color/thumbnail_bg"
                 android:contentDescription="@null"
                 android:scaleType="fitCenter"
                 android:visibility="gone"
@@ -95,7 +96,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginEnd="8dp"
-                android:background="#F7FAFC"
+                android:background="@color/thumbnail_bg"
                 android:contentDescription="@null"
                 android:scaleType="fitCenter"
                 android:visibility="gone"
@@ -106,7 +107,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginEnd="8dp"
-                android:background="#F7FAFC"
+                android:background="@color/thumbnail_bg"
                 android:contentDescription="@null"
                 android:scaleType="fitCenter"
                 android:visibility="gone"
@@ -116,7 +117,7 @@
                 android:id="@+id/thumb4"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
-                android:background="#F7FAFC"
+                android:background="@color/thumbnail_bg"
                 android:contentDescription="@null"
                 android:scaleType="fitCenter"
                 android:visibility="gone"
@@ -151,13 +152,14 @@
                 android:id="@+id/btnAddToWhatsApp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/accent_whatsapp"
+                android:backgroundTint="@color/btn_whatsapp_bg"
                 android:text="@string/add_to_whatsapp"
-                android:textColor="@color/white"
+                android:textColor="@color/btn_whatsapp_text"
                 android:textSize="12sp"
+                android:textStyle="bold"
                 app:cornerRadius="20dp"
                 app:icon="@drawable/ic_whatsapp"
-                app:iconTint="@color/white" />
+                app:iconTint="@color/btn_whatsapp_text" />
 
         </LinearLayout>
 

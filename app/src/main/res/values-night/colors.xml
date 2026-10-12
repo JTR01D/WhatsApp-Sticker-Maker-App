@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand / WhatsApp Palette Dark -->
+    <color name="primary">#1F2C34</color>
+    <color name="primary_dark">#0B141A</color>
+    <color name="accent_whatsapp">#00A884</color>
+    <color name="secondary">#25D366</color>
+    
+    <!-- Primary Action Button -->
+    <color name="btn_whatsapp_bg">#00A884</color>
+    <color name="btn_whatsapp_text">#111B21</color>
+
+    <!-- Surfaces & Backgrounds Dark -->
+    <color name="background_light">#0B141A</color>
+    <color name="surface_light">#1F2C34</color>
+    <color name="surface_variant">#121B22</color>
+    <color name="card_stroke">#2A3942</color>
+    <color name="thumbnail_bg">#2A3942</color>
+
+    <!-- Typography Dark -->
+    <color name="text_primary">#E9EDEF</color>
+    <color name="text_secondary">#8696A0</color>
+    <color name="text_muted">#667781</color>
+
+    <!-- Interactive Tones Dark -->
+    <color name="tonal_green_bg">#18382F</color>
+    <color name="tonal_green_text">#00A884</color>
+    <color name="tonal_blue_bg">#162836</color>
+    <color name="tonal_blue_text">#29B6F6</color>
+
+    <!-- Status & Badges Dark -->
+    <color name="badge_container">#332717</color>
+    <color name="badge_warning">#FFB74D</color>
+    <color name="badge_success_container">#18382F</color>
+    <color name="badge_success">#00A884</color>
+    <color name="danger">#EF5350</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="fab_tint">#0B141A</color>
+</resources>
