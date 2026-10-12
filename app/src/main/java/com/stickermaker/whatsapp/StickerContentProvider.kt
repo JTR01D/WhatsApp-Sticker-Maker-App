@@ -132,39 +132,49 @@ class StickerContentProvider : ContentProvider() {
     }
 
     @Throws(FileNotFoundException::class)
-    override fun openAssetFile(uri: Uri, mode: String): AssetFileDescriptor? {
-        val context = context ?: throw FileNotFoundException("Context is null")
-        val match = uriMatcher.match(uri)
+    override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+        val file = getTargetFile(uri)
+        return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+    }
 
-        val file: File = when (match) {
-            STICKERS_ASSET -> {
-                val pathSegments = uri.pathSegments
-                val packId = pathSegments[pathSegments.size - 2]
-                val fileName = pathSegments[pathSegments.size - 1]
-                val targetFile = StickerStorage.getStickerFile(context, packId, fileName)
-                if (!targetFile.exists()) {
-                    throw FileNotFoundException("Sticker file does not exist: ${targetFile.absolutePath}")
-                }
-                targetFile
-            }
-            STICKER_PACK_TRAY_ICON -> {
-                val fileName = uri.lastPathSegment ?: throw FileNotFoundException("No file name in URI: $uri")
-                findTrayIconFile(context, fileName) ?: throw FileNotFoundException("Tray icon does not exist: $fileName")
-            }
-            else -> throw IllegalArgumentException("Unsupported URI for openAssetFile: $uri")
-        }
-
+    @Throws(FileNotFoundException::class)
+    override fun openAssetFile(uri: Uri, mode: String): AssetFileDescriptor {
+        val file = getTargetFile(uri)
         val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
         return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
     }
 
-    private fun findTrayIconFile(context: Context, fileName: String): File? {
+    private fun getTargetFile(uri: Uri): File {
+        val context = context ?: throw FileNotFoundException("Context is null")
+        val match = uriMatcher.match(uri)
+        val pathSegments = uri.pathSegments
+
+        return when {
+            match == STICKERS_ASSET || pathSegments.size >= 3 -> {
+                val packId = pathSegments[pathSegments.size - 2]
+                val fileName = pathSegments[pathSegments.size - 1]
+                val targetFile = StickerStorage.getStickerFile(context, packId, fileName)
+                if (targetFile.exists()) {
+                    targetFile
+                } else {
+                    findFileInAnyPack(context, fileName)
+                        ?: throw FileNotFoundException("Sticker file does not exist: ${targetFile.absolutePath}")
+                }
+            }
+            match == STICKER_PACK_TRAY_ICON || pathSegments.size == 2 -> {
+                val fileName = uri.lastPathSegment ?: throw FileNotFoundException("No file name in URI: $uri")
+                findFileInAnyPack(context, fileName)
+                    ?: throw FileNotFoundException("Tray icon does not exist: $fileName")
+            }
+            else -> throw IllegalArgumentException("Unsupported URI for file access: $uri")
+        }
+    }
+
+    private fun findFileInAnyPack(context: Context, fileName: String): File? {
         val packs = StickerStorage.getAllPacks(context)
         for (pack in packs) {
-            if (pack.trayImageFile == fileName) {
-                val file = StickerStorage.getStickerFile(context, pack.identifier, fileName)
-                if (file.exists()) return file
-            }
+            val file = StickerStorage.getStickerFile(context, pack.identifier, fileName)
+            if (file.exists()) return file
         }
         val rootDir = File(context.filesDir, "stickers")
         rootDir.listFiles()?.forEach { dir ->
@@ -181,9 +191,8 @@ class StickerContentProvider : ContentProvider() {
             METADATA -> "vnd.android.cursor.dir/vnd.${BuildConfig.CONTENT_PROVIDER_AUTHORITY}.metadata"
             METADATA_PACK -> "vnd.android.cursor.item/vnd.${BuildConfig.CONTENT_PROVIDER_AUTHORITY}.metadata"
             STICKERS -> "vnd.android.cursor.dir/vnd.${BuildConfig.CONTENT_PROVIDER_AUTHORITY}.stickers"
-            STICKERS_ASSET -> "image/webp"
-            STICKER_PACK_TRAY_ICON -> "image/webp"
-            else -> throw IllegalArgumentException("Unknown URI: $uri")
+            STICKERS_ASSET, STICKER_PACK_TRAY_ICON -> "image/webp"
+            else -> "image/webp"
         }
     }
 
