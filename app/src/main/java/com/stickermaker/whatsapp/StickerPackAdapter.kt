@@ -70,8 +70,12 @@ class StickerPackAdapter(
                 if (i < pack.stickers.size) {
                     val sticker = pack.stickers[i]
                     val stickerFile = StickerStorage.getStickerFile(context, pack.identifier, sticker.imageFileName)
-                    thumbs[i].visibility = View.VISIBLE
-                    Glide.with(context).load(stickerFile).into(thumbs[i])
+                    if (stickerFile.exists()) {
+                        thumbs[i].visibility = View.VISIBLE
+                        Glide.with(context).load(stickerFile).into(thumbs[i])
+                    } else {
+                        thumbs[i].visibility = View.GONE
+                    }
                 } else {
                     thumbs[i].visibility = View.GONE
                 }

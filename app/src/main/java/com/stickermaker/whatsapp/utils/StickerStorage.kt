@@ -39,7 +39,22 @@ object StickerStorage {
         return try {
             val json = file.readText()
             val listType = object : TypeToken<MutableList<StickerPack>>() {}.type
-            gson.fromJson<MutableList<StickerPack>>(json, listType) ?: mutableListOf()
+            val packs = gson.fromJson<MutableList<StickerPack>>(json, listType) ?: mutableListOf()
+            var modified = false
+            for (pack in packs) {
+                val packDir = getPackDir(context, pack.identifier)
+                val initialCount = pack.stickers.size
+                pack.stickers.removeAll { sticker ->
+                    !File(packDir, sticker.imageFileName).exists()
+                }
+                if (pack.stickers.size != initialCount) {
+                    modified = true
+                }
+            }
+            if (modified) {
+                savePacks(context, packs)
+            }
+            packs
         } catch (e: Exception) {
             e.printStackTrace()
             mutableListOf()
