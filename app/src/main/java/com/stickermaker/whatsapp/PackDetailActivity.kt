@@ -718,7 +718,7 @@ class PackDetailActivity : AppCompatActivity() {
 
         if (isPackInitiallyEmpty) {
             // Pack nuevo/vacio: importar TODOS los stickers dividiendolos en paquetes validos (3..30 cada uno)
-            fun processListIntoPacks(uris: List<Uri>, isAnim: Boolean, namePattern: String, useCurrentFirst: Boolean) {
+            suspend fun processListIntoPacks(uris: List<Uri>, isAnim: Boolean, namePattern: String, useCurrentFirst: Boolean) {
                 val chunks = partitionIntoValidPacks(uris)
                 for ((idx, chunk) in chunks.withIndex()) {
                     val targetPackId: String
