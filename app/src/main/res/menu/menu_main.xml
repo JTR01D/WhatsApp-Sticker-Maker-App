@@ -16,4 +16,9 @@
         android:icon="@drawable/ic_archive"
         android:title="Importar Paquete (.zip)"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_delete_all_packs"
+        android:icon="@drawable/ic_delete"
+        android:title="Vaciar / Eliminar Todos los Paquetes"
+        app:showAsAction="never" />
 </menu>

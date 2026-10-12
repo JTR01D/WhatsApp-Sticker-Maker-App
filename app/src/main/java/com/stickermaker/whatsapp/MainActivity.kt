@@ -99,6 +99,10 @@ class MainActivity : AppCompatActivity() {
                     launchZipPicker()
                     true
                 }
+                R.id.action_delete_all_packs -> {
+                    confirmDeleteAllPacks()
+                    true
+                }
                 else -> false
             }
         }
@@ -140,7 +144,11 @@ class MainActivity : AppCompatActivity() {
 
         // Selection Bar Listeners
         binding.btnSelectAllPacks.setOnClickListener {
-            adapter.selectAll()
+            if (adapter.selectedPackIds.size == packsList.size) {
+                adapter.deselectAll()
+            } else {
+                adapter.selectAll()
+            }
         }
 
         binding.btnClosePacksSelection.setOnClickListener {
@@ -159,6 +167,10 @@ class MainActivity : AppCompatActivity() {
             exitSelectionMode()
             startSequentialAddToWhatsApp(validToAdd)
         }
+
+        binding.btnDeleteSelectedPacks.setOnClickListener {
+            confirmDeleteSelectedPacks()
+        }
     }
 
     private fun updateSelectionUi(selectedCount: Int) {
@@ -168,10 +180,59 @@ class MainActivity : AppCompatActivity() {
             binding.tvSelectedPacksCount.text = "$selectedCount seleccionados"
             binding.btnAddSelectedToWhatsApp.isEnabled = selectedCount > 0
             binding.btnAddSelectedToWhatsApp.alpha = if (selectedCount > 0) 1.0f else 0.5f
+            binding.btnDeleteSelectedPacks.isEnabled = selectedCount > 0
+            binding.btnDeleteSelectedPacks.alpha = if (selectedCount > 0) 1.0f else 0.5f
+
+            if (selectedCount == packsList.size && packsList.isNotEmpty()) {
+                binding.btnSelectAllPacks.text = "Ninguno"
+            } else {
+                binding.btnSelectAllPacks.text = "Todos"
+            }
         } else {
             binding.cardPacksSelectionBar.visibility = View.GONE
             binding.fabCreatePack.visibility = View.VISIBLE
         }
+    }
+
+    private fun confirmDeleteSelectedPacks() {
+        val selectedIds = adapter.selectedPackIds.toList()
+        if (selectedIds.isEmpty()) return
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("¿Eliminar ${selectedIds.size} paquetes?")
+            .setMessage("Se eliminarán los ${selectedIds.size} paquetes seleccionados de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.")
+            .setPositiveButton(R.string.delete) { _, _ ->
+                for (id in selectedIds) {
+                    StickerStorage.deletePack(this, id)
+                }
+                exitSelectionMode()
+                loadPacks()
+                Toast.makeText(this, "${selectedIds.size} paquetes eliminados", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmDeleteAllPacks() {
+        val count = packsList.size
+        if (count == 0) {
+            Toast.makeText(this, "No hay paquetes creados para eliminar", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("¿Vaciar todos los paquetes?")
+            .setMessage("Se eliminarán absolutamente todos los $count paquetes de la aplicación.\n\nEsta acción es irreversible.")
+            .setPositiveButton(R.string.delete) { _, _ ->
+                for (pack in packsList) {
+                    StickerStorage.deletePack(this, pack.identifier)
+                }
+                exitSelectionMode()
+                loadPacks()
+                Toast.makeText(this, "Se han eliminado todos los paquetes", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun exitSelectionMode() {
