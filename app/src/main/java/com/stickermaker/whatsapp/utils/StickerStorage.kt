@@ -400,12 +400,26 @@ object StickerStorage {
                 return ZipImportResult(false, "", 0, 0, 0, errorMessage = "El archivo ZIP no contiene stickers .webp")
             }
 
+            var metadataPackName: String? = null
+            var metadataPublisher: String? = null
+            var metadataIsAnimated: Boolean? = null
+            var metadataTrayFile: String? = null
+
+            if (!singlePackJson.isNullOrEmpty()) {
+                try {
+                    val obj = gson.fromJson(singlePackJson, Map::class.java)
+                    metadataPackName = obj["name"] as? String
+                    metadataPublisher = obj["publisher"] as? String
+                    metadataIsAnimated = obj["animatedStickerPack"] as? Boolean
+                    metadataTrayFile = obj["trayImageFile"] as? String
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
             val finalPackName = metadataPackName?.ifBlank { null }
                 ?: (zipUri.lastPathSegment?.substringAfterLast("/")?.removeSuffix(".zip")?.replace("_", " ")?.trim()?.ifBlank { "Stickers Importados" } ?: "Stickers Importados")
             val finalPublisher = metadataPublisher?.ifBlank { "Importado" } ?: "Importado"
-
-            // Get existing signatures across ALL packs
-            val (existingPayloads, existingVisuals) = getAllExistingStickerSignatures(context)
 
             var duplicatesCount = 0
             val validStickers = mutableListOf<Pair<File, StickerInspectionResult>>()
