@@ -180,42 +180,49 @@ class PackDetailActivity : AppCompatActivity() {
         val candidates = listOf(
             File("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers"),
             File("/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers"),
+            File("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Backup Excluded Stickers"),
+            File("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/.Shared"),
             File("/storage/emulated/0/WhatsApp/Media/WhatsApp Stickers"),
             File("/sdcard/WhatsApp/Media/WhatsApp Stickers"),
             File("/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Stickers")
         )
 
-        val targetDir = candidates.firstOrNull { it.exists() && it.isDirectory }
-        if (targetDir == null) {
+        val targetDirs = candidates.filter { it.exists() && it.isDirectory }
+        if (targetDirs.isEmpty()) {
             Toast.makeText(this, "No se encontró la carpeta oficial de WhatsApp en el almacenamiento", Toast.LENGTH_LONG).show()
             launchFolderPicker()
             return
         }
 
-        importDirectFolder(targetDir)
+        importWhatsAppDirectories(targetDirs)
     }
 
-    private fun importDirectFolder(folder: File) {
+    private fun importWhatsAppDirectories(directories: List<File>) {
         binding.layoutProcessing.visibility = View.VISIBLE
         binding.progressBarImport.progress = 0
-        binding.tvProcessingStatus.text = "Escaneando ${folder.name}..."
+        binding.tvProcessingStatus.text = "Escaneando stickers de WhatsApp..."
         setControlsEnabled(false)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val files = folder.listFiles()?.filter {
-                it.isFile && it.name.endsWith(".webp", ignoreCase = true)
-            } ?: emptyList()
+            val allFiles = mutableListOf<File>()
+            for (dir in directories) {
+                dir.listFiles()?.filter {
+                    it.isFile && it.name.endsWith(".webp", ignoreCase = true)
+                }?.let { allFiles.addAll(it) }
+            }
 
-            if (files.isEmpty()) {
+            if (allFiles.isEmpty()) {
                 withContext(Dispatchers.Main) {
                     binding.layoutProcessing.visibility = View.GONE
                     setControlsEnabled(true)
-                    Toast.makeText(this@PackDetailActivity, "No se encontraron stickers .webp en ${folder.name}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@PackDetailActivity, "No se encontraron stickers .webp en WhatsApp", Toast.LENGTH_LONG).show()
                 }
                 return@launch
             }
 
-            val uris = files.map { Uri.fromFile(it) }
+            // Ordenar por fecha de modificación descendente (los más recientes y favoritos primero)
+            val sortedFiles = allFiles.distinctBy { it.name }.sortedByDescending { it.lastModified() }
+            val uris = sortedFiles.map { Uri.fromFile(it) }
             importUrisBatch(uris)
         }
     }
@@ -322,14 +329,12 @@ class PackDetailActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val rootDir = DocumentFile.fromTreeUri(this@PackDetailActivity, treeUri)
-                val webpUris = mutableListOf<Uri>()
-
-                rootDir?.listFiles()?.forEach { file ->
+                val webpFiles = rootDir?.listFiles()?.filter { file ->
                     val name = file.name.orEmpty()
-                    if (file.isFile && (name.endsWith(".webp", ignoreCase = true) || file.type == "image/webp")) {
-                        webpUris.add(file.uri)
-                    }
-                }
+                    file.isFile && (name.endsWith(".webp", ignoreCase = true) || file.type == "image/webp")
+                }?.sortedByDescending { it.lastModified() } ?: emptyList()
+
+                val webpUris = webpFiles.map { it.uri }
 
                 if (webpUris.isEmpty()) {
                     withContext(Dispatchers.Main) {
