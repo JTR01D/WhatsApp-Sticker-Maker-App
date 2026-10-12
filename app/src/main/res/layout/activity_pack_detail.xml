@@ -133,6 +133,24 @@
                         app:iconGravity="textStart"
                         app:iconTint="@color/btn_whatsapp_text" />
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnExportZip"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:backgroundTint="@color/tonal_green_bg"
+                        android:paddingVertical="11dp"
+                        android:text="📦 Compartir Paquete (.zip)"
+                        android:textColor="@color/tonal_green_text"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="14dp"
+                        app:icon="@drawable/ic_share"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/tonal_green_text"
+                        app:strokeColor="@color/accent_whatsapp"
+                        app:strokeWidth="1dp" />
+
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
@@ -157,7 +175,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📥 Importar Stickers (.webp)"
+                        android:text="📥 Importar Stickers (.webp o .zip)"
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"
                         android:textStyle="bold" />
@@ -189,7 +207,7 @@
                         app:strokeColor="@color/accent_whatsapp"
                         app:strokeWidth="1dp" />
 
-                    <!-- Folder and Files Buttons -->
+                    <!-- Folder, Files, and ZIP Buttons -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -200,13 +218,13 @@
                             android:id="@+id/btnImportFolder"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="6dp"
+                            android:layout_marginEnd="4dp"
                             android:layout_weight="1"
                             android:backgroundTint="@color/tonal_green_bg"
                             android:paddingVertical="10dp"
                             android:text="Carpeta"
                             android:textColor="@color/tonal_green_text"
-                            android:textSize="13sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
                             app:cornerRadius="12dp"
                             app:icon="@drawable/ic_folder"
@@ -217,16 +235,33 @@
                             android:id="@+id/btnImportFiles"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
+                            android:layout_marginHorizontal="4dp"
                             android:layout_weight="1"
                             android:backgroundTint="@color/tonal_green_bg"
                             android:paddingVertical="10dp"
                             android:text="Archivos"
                             android:textColor="@color/tonal_green_text"
-                            android:textSize="13sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
                             app:cornerRadius="12dp"
                             app:icon="@drawable/ic_photo"
+                            app:iconGravity="textStart"
+                            app:iconTint="@color/tonal_green_text" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnImportZip"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1.1"
+                            android:backgroundTint="@color/tonal_green_bg"
+                            android:paddingVertical="10dp"
+                            android:text="ZIP"
+                            android:textColor="@color/tonal_green_text"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="12dp"
+                            app:icon="@drawable/ic_archive"
                             app:iconGravity="textStart"
                             app:iconTint="@color/tonal_green_text" />
 

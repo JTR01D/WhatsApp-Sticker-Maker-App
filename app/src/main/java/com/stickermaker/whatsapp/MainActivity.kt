@@ -25,13 +25,109 @@ class MainActivity : AppCompatActivity() {
         const val ADD_PACK_REQUEST_CODE = 2001
     }
 
+    private val selectZipLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                importZipFile(uri)
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupToolbar()
         setupRecyclerView()
         setupListeners()
+        handleIncomingZipIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent?.let { handleIncomingZipIntent(it) }
+    }
+
+    private fun setupToolbar() {
+        binding.toolbar.inflateMenu(R.menu.menu_main)
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_import_zip -> {
+                    launchZipPicker()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun launchZipPicker() {
+        selectZipLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*"))
+    }
+
+    private fun handleIncomingZipIntent(intent: Intent) {
+        val action = intent.action
+        val uri: android.net.Uri? = if (action == Intent.ACTION_VIEW) {
+            intent.data
+        } else if (action == Intent.ACTION_SEND) {
+            intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        } else {
+            null
+        }
+
+        if (uri != null) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("📦 Importar Paquete de Stickers")
+                .setMessage("¿Deseas importar los stickers de este archivo ZIP a tu colección?\n\nLos stickers que ya tengas se verificarán para no duplicarse.")
+                .setPositiveButton("Importar") { _, _ ->
+                    importZipFile(uri)
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+    }
+
+    private fun importZipFile(uri: android.net.Uri) {
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Importando Paquete ZIP")
+            .setMessage("Descomprimiendo y verificando stickers duplicados...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        androidx.lifecycle.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val result = StickerStorage.importPackFromZip(this@MainActivity, uri)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                progressDialog.dismiss()
+                if (result.success) {
+                    val msg = buildString {
+                        appendLine("📦 Paquete: '${result.packName}'")
+                        appendLine("\n📥 ${result.newStickersAdded} nuevos stickers agregados.")
+                        if (result.duplicatesSkipped > 0) {
+                            appendLine("\n🧹 ${result.duplicatesSkipped} stickers duplicados omitidos porque ya los tenías guardados.")
+                        }
+                        if (result.createdPackCount > 1) {
+                            appendLine("\n📁 Debido al límite de 30 stickers por paquete de WhatsApp, se crearon ${result.createdPackCount} paquetes.")
+                        }
+                    }
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("✅ Importación Completada")
+                        .setMessage(msg)
+                        .setPositiveButton("Aceptar") { _, _ ->
+                            loadPacks()
+                        }
+                        .show()
+                    loadPacks()
+                } else {
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Error al importar ZIP")
+                        .setMessage(result.errorMessage ?: "No se pudo procesar el archivo ZIP")
+                        .setPositiveButton("Aceptar", null)
+                        .show()
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -64,6 +160,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnEmptyCreate.setOnClickListener {
             showCreatePackDialog()
+        }
+
+        binding.btnEmptyImportZip.setOnClickListener {
+            launchZipPicker()
         }
     }
 

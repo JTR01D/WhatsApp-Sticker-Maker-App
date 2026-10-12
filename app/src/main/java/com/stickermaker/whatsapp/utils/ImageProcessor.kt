@@ -19,7 +19,9 @@ import kotlin.math.min
 data class StickerInspectionResult(
     val isValidWebP: Boolean,
     val isAnimated: Boolean,
-    val checksum: String
+    val payloadHash: String,
+    val visualDHash: String,
+    val checksum: String = payloadHash
 )
 
 object ImageProcessor {
@@ -122,76 +124,152 @@ object ImageProcessor {
     }
 
     /**
-     * Inspects a WebP file in a single fast stream pass:
-     * - Validates RIFF...WEBP header
+     * Inspects a WebP file:
+     * - Validates RIFF...WEBP container
      * - Detects if it's animated or static
-     * - Computes an MD5 checksum of the entire file to accurately detect duplicates
+     * - Computes normalized image payload hash (strictly ignoring EXIF, XMP, and ICCP metadata chunks)
+     * - Computes perceptual difference hash (dHash) on frame 0 to catch visual duplicates even if re-encoded
      */
-     fun inspectWebP(context: Context, sourceUri: Uri): StickerInspectionResult {
-         return try {
-             openStream(context, sourceUri)?.use { stream ->
-                 val digest = MessageDigest.getInstance("MD5")
-                 val buffer = ByteArray(8192)
-                 var bytesRead: Int
-                 var totalBytes = 0
-                 val header = ByteArray(4096)
-                 var headerBytes = 0
+    fun inspectWebP(context: Context, sourceUri: Uri): StickerInspectionResult {
+        return try {
+            val bytes = openStream(context, sourceUri)?.use { it.readBytes() }
+                ?: return StickerInspectionResult(isValidWebP = false, isAnimated = false, payloadHash = "", visualDHash = "")
 
-                 while (stream.read(buffer).also { bytesRead = it } != -1) {
-                     digest.update(buffer, 0, bytesRead)
-                     if (headerBytes < header.size) {
-                         val toCopy = minOf(bytesRead, header.size - headerBytes)
-                         System.arraycopy(buffer, 0, header, headerBytes, toCopy)
-                         headerBytes += toCopy
-                     }
-                     totalBytes += bytesRead
-                 }
+            if (bytes.size < 12) {
+                return StickerInspectionResult(isValidWebP = false, isAnimated = false, payloadHash = "", visualDHash = "")
+            }
 
-                 if (totalBytes < 12) {
-                     return StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
-                 }
+            val isRiff = bytes[0] == 'R'.code.toByte() &&
+                         bytes[1] == 'I'.code.toByte() &&
+                         bytes[2] == 'F'.code.toByte() &&
+                         bytes[3] == 'F'.code.toByte()
+            val isWebp = bytes[8] == 'W'.code.toByte() &&
+                         bytes[9] == 'E'.code.toByte() &&
+                         bytes[10] == 'B'.code.toByte() &&
+                         bytes[11] == 'P'.code.toByte()
 
-                 val isRiff = header[0] == 'R'.code.toByte() &&
-                              header[1] == 'I'.code.toByte() &&
-                              header[2] == 'F'.code.toByte() &&
-                              header[3] == 'F'.code.toByte()
-                 val isWebp = header[8] == 'W'.code.toByte() &&
-                              header[9] == 'E'.code.toByte() &&
-                              header[10] == 'B'.code.toByte() &&
-                              header[11] == 'P'.code.toByte()
+            if (!isRiff || !isWebp) {
+                return StickerInspectionResult(isValidWebP = false, isAnimated = false, payloadHash = "", visualDHash = "")
+            }
 
-                 if (!isRiff || !isWebp) {
-                     return StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
-                 }
+            var isAnim = false
+            val digest = MessageDigest.getInstance("MD5")
+            var offset = 12
+            var imageChunksFound = 0
 
-                 var isAnim = false
-                 if (headerBytes >= 21) {
-                     val isVp8x = header[12] == 'V'.code.toByte() &&
-                                  header[13] == 'P'.code.toByte() &&
-                                  header[14] == '8'.code.toByte() &&
-                                  header[15] == 'X'.code.toByte()
-                     if (isVp8x && (header[20].toInt() and 0x02) != 0) {
-                         isAnim = true
-                     } else {
-                         for (i in 12 until headerBytes - 3) {
-                             if (header[i] == 'A'.code.toByte() &&
-                                 header[i + 1] == 'N'.code.toByte() &&
-                                 header[i + 2] == 'I'.code.toByte() &&
-                                 header[i + 3] == 'M'.code.toByte()) {
-                                 isAnim = true
-                                 break
-                             }
-                         }
-                     }
-                 }
+            // Walk RIFF chunks
+            while (offset + 8 <= bytes.size) {
+                val fourCC = String(bytes, offset, 4, Charsets.US_ASCII)
+                val chunkSize = ((bytes[offset + 4].toInt() and 0xFF) or
+                        ((bytes[offset + 5].toInt() and 0xFF) shl 8) or
+                        ((bytes[offset + 6].toInt() and 0xFF) shl 16) or
+                        ((bytes[offset + 7].toInt() and 0xFF) shl 24)).toLong() and 0xFFFFFFFFL
 
-                 val hash = digest.digest().joinToString("") { "%02x".format(it) }
-                 StickerInspectionResult(isValidWebP = true, isAnimated = isAnim, checksum = hash)
-             } ?: StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
-         } catch (e: Exception) {
-             StickerInspectionResult(isValidWebP = false, isAnimated = false, checksum = "")
-         }
-     }
+                val chunkDataStart = offset + 8
+                val chunkDataEnd = minOf(bytes.size.toLong(), chunkDataStart + chunkSize).toInt()
+                val actualChunkLen = (chunkDataEnd - chunkDataStart).coerceAtLeast(0)
+
+                when (fourCC) {
+                    "VP8X" -> {
+                        imageChunksFound++
+                        digest.update(bytes, offset, 4) // FourCC
+                        if (actualChunkLen > 0) {
+                            digest.update(bytes, chunkDataStart, actualChunkLen)
+                            // Animation flag is at offset 0 of chunk data (byte 20 of file)
+                            if (actualChunkLen >= 1 && (bytes[chunkDataStart].toInt() and 0x02) != 0) {
+                                isAnim = true
+                            }
+                        }
+                    }
+                    "ANIM" -> {
+                        imageChunksFound++
+                        isAnim = true
+                        digest.update(bytes, offset, 4)
+                        if (actualChunkLen > 0) digest.update(bytes, chunkDataStart, actualChunkLen)
+                    }
+                    "ANMF", "VP8 ", "VP8L", "ALPH" -> {
+                        imageChunksFound++
+                        digest.update(bytes, offset, 4)
+                        if (actualChunkLen > 0) digest.update(bytes, chunkDataStart, actualChunkLen)
+                    }
+                    "EXIF", "XMP ", "ICCP" -> {
+                        // Skip metadata chunk completely from digest!
+                        // This prevents different EXIF / author / pack IDs from causing false uniqueness.
+                    }
+                    else -> {
+                        // Include unknown chunks in digest for safety
+                        digest.update(bytes, offset, 4)
+                        if (actualChunkLen > 0) digest.update(bytes, chunkDataStart, actualChunkLen)
+                    }
+                }
+
+                // Chunks are padded to even 2-byte boundary
+                val padding = if (chunkSize % 2L != 0L) 1 else 0
+                val nextOffset = (chunkDataStart + chunkSize + padding).toInt()
+                if (nextOffset <= offset) break // Safety against infinite loop
+                offset = nextOffset
+            }
+
+            // Fallback if no specific chunks recognized: hash entire file
+            val payloadHash = if (imageChunksFound > 0) {
+                digest.digest().joinToString("") { "%02x".format(it) }
+            } else {
+                val fullDigest = MessageDigest.getInstance("MD5")
+                fullDigest.update(bytes)
+                fullDigest.digest().joinToString("") { "%02x".format(it) }
+            }
+
+            // Perceptual visual hash (dHash) on frame 0
+            val visualDHash = computeDHash(context, sourceUri)
+
+            StickerInspectionResult(
+                isValidWebP = true,
+                isAnimated = isAnim,
+                payloadHash = payloadHash,
+                visualDHash = visualDHash
+            )
+        } catch (e: Exception) {
+            StickerInspectionResult(isValidWebP = false, isAnimated = false, payloadHash = "", visualDHash = "")
+        }
+    }
+
+    /**
+     * Computes a 64-bit difference hash (dHash) of frame 0.
+     * Extremely fast and resilient against re-encoding, EXIF modifications, and compression differences.
+     */
+    fun computeDHash(context: Context, sourceUri: Uri): String {
+        return try {
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = 8
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
+            val original = openStream(context, sourceUri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            } ?: return ""
+
+            val scaled = Bitmap.createScaledBitmap(original, 9, 8, true)
+            if (scaled != original) {
+                original.recycle()
+            }
+
+            var hash = 0L
+            for (y in 0 until 8) {
+                for (x in 0 until 8) {
+                    val p1 = scaled.getPixel(x, y)
+                    val p2 = scaled.getPixel(x + 1, y)
+                    val lum1 = (p1 and 0xFF) + ((p1 shr 8) and 0xFF) + ((p1 shr 16) and 0xFF)
+                    val lum2 = (p2 and 0xFF) + ((p2 shr 8) and 0xFF) + ((p2 shr 16) and 0xFF)
+                    if (lum1 > lum2) {
+                        hash = hash or (1L shl (y * 8 + x))
+                    }
+                }
+            }
+            scaled.recycle()
+            "%016x".format(hash)
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     /**
      * Strictly processes a WebP sticker image.

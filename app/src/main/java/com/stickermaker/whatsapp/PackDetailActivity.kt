@@ -69,6 +69,14 @@ class PackDetailActivity : AppCompatActivity() {
             }
         }
 
+    // Launcher for selecting a .zip sticker pack
+    private val selectZipLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                importZipFile(uri)
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPackDetailBinding.inflate(layoutInflater)
@@ -127,6 +135,16 @@ class PackDetailActivity : AppCompatActivity() {
             launchFilePicker()
         }
 
+        // Direct button: Import ZIP
+        binding.btnImportZip.setOnClickListener {
+            launchZipPicker()
+        }
+
+        // Share / Export Pack as ZIP
+        binding.btnExportZip.setOnClickListener {
+            sharePackAsZip()
+        }
+
         binding.btnDetailAddToWhatsApp.setOnClickListener {
             currentPack?.let { pack ->
                 WhatsAppChecker.addPackToWhatsApp(this, pack, ADD_PACK_REQUEST_CODE)
@@ -138,7 +156,8 @@ class PackDetailActivity : AppCompatActivity() {
         val options = arrayOf(
             "💬 WhatsApp Oficial (Detección Automática)\n   Carga tus stickers recibidos y favoritos al instante",
             "📁 Seleccionar Carpeta Completa\n   Elige cualquier carpeta de tu teléfono (.webp)",
-            "🖼️ Elegir Archivos Individuales\n   Selecciona uno o más archivos .webp sueltos"
+            "🖼️ Elegir Archivos Individuales\n   Selecciona uno o más archivos .webp sueltos",
+            "📦 Importar Paquete ZIP (.zip)\n   Carga un paquete con verificación anti-duplicados"
         )
 
         MaterialAlertDialogBuilder(this)
@@ -148,10 +167,98 @@ class PackDetailActivity : AppCompatActivity() {
                     0 -> checkAndImportWhatsAppStickersFolder()
                     1 -> launchFolderPicker()
                     2 -> launchFilePicker()
+                    3 -> launchZipPicker()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun launchZipPicker() {
+        selectZipLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*"))
+    }
+
+    private fun sharePackAsZip() {
+        val pack = currentPack ?: return
+        if (pack.stickers.isEmpty()) {
+            Toast.makeText(this, "El paquete debe tener al menos 1 sticker para exportarlo", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        binding.layoutProcessing.visibility = View.VISIBLE
+        binding.progressBarImport.isIndeterminate = true
+        binding.tvProcessingStatus.text = "Comprimiendo paquete en ZIP..."
+        setControlsEnabled(false)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val zipFile = StickerStorage.exportPackToZip(this@PackDetailActivity, packId)
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                binding.progressBarImport.isIndeterminate = false
+                setControlsEnabled(true)
+
+                if (zipFile != null && zipFile.exists()) {
+                    try {
+                        val authority = "${applicationContext.packageName}.fileprovider"
+                        val uri = androidx.core.content.FileProvider.getUriForFile(this@PackDetailActivity, authority, zipFile)
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/zip"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            putExtra(Intent.EXTRA_SUBJECT, "Paquete de Stickers: ${pack.name}")
+                            putExtra(Intent.EXTRA_TEXT, "¡Aquí tienes mi paquete de stickers '${pack.name}' para WhatsApp!")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(shareIntent, "Compartir paquete por WhatsApp o Mensaje"))
+                    } catch (e: Exception) {
+                        Toast.makeText(this@PackDetailActivity, "Error al compartir: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(this@PackDetailActivity, "No se pudo generar el archivo ZIP", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun importZipFile(uri: Uri) {
+        binding.layoutProcessing.visibility = View.VISIBLE
+        binding.progressBarImport.isIndeterminate = true
+        binding.tvProcessingStatus.text = "Extrayendo y verificando duplicados del ZIP..."
+        setControlsEnabled(false)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = StickerStorage.importPackFromZip(this@PackDetailActivity, uri, targetPackId = packId)
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                binding.progressBarImport.isIndeterminate = false
+                setControlsEnabled(true)
+
+                if (result.success) {
+                    val msg = buildString {
+                        appendLine("📥 Se agregaron ${result.newStickersAdded} nuevos stickers a tu colección.")
+                        if (result.duplicatesSkipped > 0) {
+                            appendLine("\n🧹 Se omitieron ${result.duplicatesSkipped} stickers duplicados porque ya los tenías guardados.")
+                        }
+                        if (result.createdPackCount > 1) {
+                            appendLine("\n📁 Debido al límite de 30 stickers por paquete de WhatsApp, se crearon ${result.createdPackCount} paquetes.")
+                        }
+                    }
+                    MaterialAlertDialogBuilder(this@PackDetailActivity)
+                        .setTitle("✅ Importación Completada")
+                        .setMessage(msg)
+                        .setPositiveButton("Aceptar") { _, _ ->
+                            loadPackData()
+                        }
+                        .show()
+                    loadPackData()
+                } else {
+                    MaterialAlertDialogBuilder(this@PackDetailActivity)
+                        .setTitle("Error al importar ZIP")
+                        .setMessage(result.errorMessage ?: "No se pudo procesar el archivo ZIP")
+                        .setPositiveButton("Aceptar", null)
+                        .show()
+                }
+            }
+        }
     }
 
     private fun checkAndImportWhatsAppStickersFolder() {
@@ -395,7 +502,9 @@ class PackDetailActivity : AppCompatActivity() {
         val totalCount = allUris.size
         val staticUris = mutableListOf<Uri>()
         val animatedUris = mutableListOf<Uri>()
-        val seenChecksums = mutableSetOf<String>()
+        val (existingPayloads, existingVisuals) = StickerStorage.getAllExistingStickerSignatures(this@PackDetailActivity)
+        val seenPayloads = mutableSetOf<String>()
+        val seenVisuals = mutableSetOf<String>()
         var duplicatesCount = 0
         var invalidCount = 0
 
@@ -408,15 +517,20 @@ class PackDetailActivity : AppCompatActivity() {
             val inspection = ImageProcessor.inspectWebP(this@PackDetailActivity, uri)
             if (!inspection.isValidWebP) {
                 invalidCount++
-            } else if (seenChecksums.contains(inspection.checksum)) {
-                // Sticker duplicado idéntico omitido
-                duplicatesCount++
             } else {
-                seenChecksums.add(inspection.checksum)
-                if (inspection.isAnimated) {
-                    animatedUris.add(uri)
+                val isDup = (inspection.payloadHash.isNotEmpty() && (existingPayloads.contains(inspection.payloadHash) || seenPayloads.contains(inspection.payloadHash))) ||
+                            (inspection.visualDHash.isNotEmpty() && (existingVisuals.contains(inspection.visualDHash) || seenVisuals.contains(inspection.visualDHash)))
+
+                if (isDup) {
+                    duplicatesCount++
                 } else {
-                    staticUris.add(uri)
+                    if (inspection.payloadHash.isNotEmpty()) seenPayloads.add(inspection.payloadHash)
+                    if (inspection.visualDHash.isNotEmpty()) seenVisuals.add(inspection.visualDHash)
+                    if (inspection.isAnimated) {
+                        animatedUris.add(uri)
+                    } else {
+                        staticUris.add(uri)
+                    }
                 }
             }
 
