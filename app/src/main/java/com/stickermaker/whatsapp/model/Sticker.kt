@@ -6,5 +6,5 @@ data class Sticker(
     @SerializedName("image_file")
     val imageFileName: String,
     @SerializedName("emojis")
-    val emojis: List<String> = listOf("😀")
+    var emojis: List<String> = listOf("😀")
 )
