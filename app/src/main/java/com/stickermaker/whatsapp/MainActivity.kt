@@ -27,6 +27,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.os.Environment
+import android.provider.Settings
+import com.stickermaker.whatsapp.model.Sticker
+import com.stickermaker.whatsapp.utils.ImageProcessor
+import java.io.File
 import java.util.ArrayDeque
 import java.util.UUID
 
@@ -99,6 +104,10 @@ class MainActivity : AppCompatActivity() {
                     launchZipPicker()
                     true
                 }
+                R.id.action_scan_whatsapp -> {
+                    checkAndScanWhatsAppStickers()
+                    true
+                }
                 R.id.action_delete_all_packs -> {
                     confirmDeleteAllPacks()
                     true
@@ -136,6 +145,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnEmptyCreate.setOnClickListener {
             showCreatePackDialog()
+        }
+
+        binding.btnEmptyScanWhatsApp.setOnClickListener {
+            checkAndScanWhatsAppStickers()
         }
 
         binding.btnEmptyImportZip.setOnClickListener {
@@ -190,7 +203,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             binding.cardPacksSelectionBar.visibility = View.GONE
-            binding.fabCreatePack.visibility = View.VISIBLE
+            binding.fabCreatePack.visibility = if (packsList.isNotEmpty()) View.VISIBLE else View.GONE
         }
     }
 
@@ -238,7 +251,7 @@ class MainActivity : AppCompatActivity() {
     private fun exitSelectionMode() {
         adapter.isSelectionMode = false
         binding.cardPacksSelectionBar.visibility = View.GONE
-        binding.fabCreatePack.visibility = View.VISIBLE
+        binding.fabCreatePack.visibility = if (packsList.isNotEmpty()) View.VISIBLE else View.GONE
     }
 
     /**
@@ -578,10 +591,14 @@ class MainActivity : AppCompatActivity() {
         if (packs.isEmpty()) {
             binding.layoutEmpty.visibility = View.VISIBLE
             binding.recyclerViewPacks.visibility = View.GONE
+            binding.fabCreatePack.visibility = View.GONE
             exitSelectionMode()
         } else {
             binding.layoutEmpty.visibility = View.GONE
             binding.recyclerViewPacks.visibility = View.VISIBLE
+            if (!adapter.isSelectionMode) {
+                binding.fabCreatePack.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -634,5 +651,209 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun <T> partitionIntoValidPacks(items: List<T>): List<List<T>> {
+        if (items.isEmpty()) return emptyList()
+        if (items.size <= 30) return listOf(items)
+
+        val result = mutableListOf<List<T>>()
+        var startIndex = 0
+        val total = items.size
+
+        while (startIndex < total) {
+            val remaining = total - startIndex
+            if (remaining <= 30) {
+                result.add(items.subList(startIndex, total))
+                break
+            } else if (remaining in 31..32) {
+                val half = remaining / 2
+                result.add(items.subList(startIndex, startIndex + half))
+                result.add(items.subList(startIndex + half, total))
+                break
+            } else {
+                result.add(items.subList(startIndex, startIndex + 30))
+                startIndex += 30
+            }
+        }
+        return result
+    }
+
+    private fun checkAndScanWhatsAppStickers() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Acceso a Stickers de WhatsApp")
+                    .setMessage("Para escanear directamente los stickers que recibes y guardas en WhatsApp, Android requiere conceder el permiso de acceso a archivos.\n\nToca en 'Conceder Permiso' y habilita el interruptor para esta app.")
+                    .setPositiveButton("Conceder Permiso") { _, _ ->
+                        try {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                data = Uri.parse("package:$packageName")
+                            }
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                            startActivity(intent)
+                        }
+                    }
+                    .setNegativeButton("Ahora no", null)
+                    .show()
+                return
+            }
+        }
+
+        val candidates = listOf(
+            File("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers"),
+            File("/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers"),
+            File("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Backup Excluded Stickers"),
+            File("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/.Shared"),
+            File("/storage/emulated/0/WhatsApp/Media/WhatsApp Stickers"),
+            File("/sdcard/WhatsApp/Media/WhatsApp Stickers"),
+            File("/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Stickers")
+        )
+
+        val targetDirs = candidates.filter { it.exists() && it.isDirectory }
+        if (targetDirs.isEmpty()) {
+            Toast.makeText(this, "No se encontró la carpeta oficial de WhatsApp en el almacenamiento", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Escaneando WhatsApp Stickers")
+            .setMessage("Buscando stickers .webp en WhatsApp...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val allFiles = mutableListOf<File>()
+            for (dir in targetDirs) {
+                dir.listFiles()?.filter {
+                    it.isFile && it.name.endsWith(".webp", ignoreCase = true)
+                }?.let { allFiles.addAll(it) }
+            }
+
+            if (allFiles.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    progressDialog.dismiss()
+                    Toast.makeText(this@MainActivity, "No se encontraron stickers .webp en WhatsApp", Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+
+            // Inspect and filter duplicates
+            val staticFiles = mutableListOf<File>()
+            val animatedFiles = mutableListOf<File>()
+            val (existingPayloads, existingVisuals) = StickerStorage.getAllExistingStickerSignatures(this@MainActivity)
+            val seenPayloads = mutableSetOf<String>()
+            val seenVisuals = mutableSetOf<String>()
+            var duplicatesCount = 0
+
+            for ((index, file) in allFiles.withIndex()) {
+                val uri = Uri.fromFile(file)
+                val inspection = ImageProcessor.inspectWebP(this@MainActivity, uri)
+                if (inspection.isValidWebP) {
+                    val isDup = (inspection.payloadHash.isNotEmpty() && (existingPayloads.contains(inspection.payloadHash) || seenPayloads.contains(inspection.payloadHash))) ||
+                                (inspection.visualDHash.isNotEmpty() && (existingVisuals.contains(inspection.visualDHash) || seenVisuals.contains(inspection.visualDHash)))
+
+                    if (isDup) {
+                        duplicatesCount++
+                    } else {
+                        if (inspection.payloadHash.isNotEmpty()) seenPayloads.add(inspection.payloadHash)
+                        if (inspection.visualDHash.isNotEmpty()) seenVisuals.add(inspection.visualDHash)
+                        if (inspection.isAnimated) {
+                            animatedFiles.add(file)
+                        } else {
+                            staticFiles.add(file)
+                        }
+                    }
+                }
+            }
+
+            val totalNew = staticFiles.size + animatedFiles.size
+            if (totalNew == 0) {
+                withContext(Dispatchers.Main) {
+                    progressDialog.dismiss()
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Stickers ya importados")
+                        .setMessage("Todos los $duplicatesCount stickers encontrados en WhatsApp ya los tienes guardados en tus paquetes.")
+                        .setPositiveButton("Aceptar", null)
+                        .show()
+                }
+                return@launch
+            }
+
+            // Partition into packs of 3..30
+            val staticChunks = partitionIntoValidPacks(staticFiles)
+            val animatedChunks = partitionIntoValidPacks(animatedFiles)
+            var createdPacksCount = 0
+
+            fun saveChunks(chunks: List<List<File>>, isAnimated: Boolean, baseName: String) {
+                for ((chunkIndex, chunk) in chunks.withIndex()) {
+                    val packName = if (chunks.size == 1) {
+                        baseName
+                    } else if (chunkIndex == 0) {
+                        baseName
+                    } else {
+                        "$baseName (Parte $chunkIndex)"
+                    }
+
+                    val packId = UUID.randomUUID().toString()
+                    val stickers = mutableListOf<Sticker>()
+                    var trayImage = ""
+
+                    for (file in chunk) {
+                        val fileName = "${UUID.randomUUID()}.webp"
+                        val destFile = StickerStorage.getStickerFile(this@MainActivity, packId, fileName)
+                        try {
+                            file.copyTo(destFile, overwrite = true)
+                            stickers.add(Sticker(imageFileName = fileName, emojis = listOf("⭐")))
+                            if (trayImage.isEmpty()) {
+                                trayImage = fileName
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    if (stickers.isNotEmpty()) {
+                        val pack = StickerPack(
+                            identifier = packId,
+                            name = packName,
+                            publisher = "WhatsApp",
+                            trayImageFile = trayImage,
+                            animatedStickerPack = isAnimated,
+                            stickers = stickers
+                        )
+                        StickerStorage.savePack(this@MainActivity, pack)
+                        createdPacksCount++
+                    }
+                }
+            }
+
+            if (staticChunks.isNotEmpty()) {
+                saveChunks(staticChunks, false, "Mis Stickers")
+            }
+            if (animatedChunks.isNotEmpty()) {
+                saveChunks(animatedChunks, true, "Mis Stickers Animados")
+            }
+
+            withContext(Dispatchers.Main) {
+                progressDialog.dismiss()
+                loadPacks()
+                val summary = buildString {
+                    appendLine("🎉 ¡Se crearon $createdPacksCount paquetes con $totalNew stickers de WhatsApp!")
+                    if (duplicatesCount > 0) {
+                        appendLine("\n🧹 $duplicatesCount stickers ya existentes fueron omitidos.")
+                    }
+                    appendLine("\nCada paquete tiene un máximo de 30 stickers para cumplir con WhatsApp.")
+                }
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("✅ Escaneo Completado")
+                    .setMessage(summary)
+                    .setPositiveButton("Aceptar", null)
+                    .show()
+            }
+        }
     }
 }

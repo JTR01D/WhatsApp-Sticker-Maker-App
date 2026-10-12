@@ -6,12 +6,12 @@ Clear-Host
 $adb = "C:\Users\juane\Downloads\platform-tools\adb.exe"
 
 if (-not (Test-Path $adb)) {
-    Write-Host "Error: No se encontró adb.exe en $adb" -ForegroundColor Red
+    Write-Host "Error: No se encontrÃ³ adb.exe en $adb" -ForegroundColor Red
     pause
     exit
 }
 
-# Obtener información del dispositivo conectado
+# Obtener informaciÃ³n del dispositivo conectado
 $deviceLine = & $adb devices | Where-Object { $_ -match "\bdevice$" } | Select-Object -First 1
 $deviceModel = "No detectado"
 $deviceSerial = ""
@@ -21,30 +21,30 @@ if ($deviceLine) {
     if ($rawModel) { $deviceModel = $rawModel.Trim() }
 }
 
-# Banner informativo y estético
-Write-Host "╔══════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║           LOGS EN TIEMPO REAL - WHATSAPP & STICKER MAKER                     ║" -ForegroundColor Cyan
-Write-Host "╠══════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+# Banner informativo y estÃ©tico
+Write-Host "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—" -ForegroundColor Cyan
+Write-Host "â•‘           LOGS EN TIEMPO REAL - WHATSAPP & STICKER MAKER                     â•‘" -ForegroundColor Cyan
+Write-Host "â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£" -ForegroundColor Cyan
 $devInfo = "$deviceModel ($deviceSerial)"
 $padLen = [Math]::Max(0, 58 - $devInfo.Length)
-Write-Host "║  Dispositivo : " -ForegroundColor Cyan -NoNewline
+Write-Host "â•‘  Dispositivo : " -ForegroundColor Cyan -NoNewline
 Write-Host $devInfo -ForegroundColor Yellow -NoNewline
 Write-Host (" " * $padLen) -NoNewline
-Write-Host "║" -ForegroundColor Cyan
+Write-Host "â•‘" -ForegroundColor Cyan
 
-Write-Host "║  Convención de Colores:                                                      ║" -ForegroundColor Cyan
-Write-Host "║     " -ForegroundColor Cyan -NoNewline
+Write-Host "â•‘  ConvenciÃ³n de Colores:                                                      â•‘" -ForegroundColor Cyan
+Write-Host "â•‘     " -ForegroundColor Cyan -NoNewline
 Write-Host " ERROR " -ForegroundColor White -BackgroundColor DarkRed -NoNewline
 Write-Host " Fallos / Excepciones    " -ForegroundColor Red -NoNewline
 Write-Host " WARN  " -ForegroundColor Black -BackgroundColor DarkYellow -NoNewline
-Write-Host " Advertencias / Glide     ║" -ForegroundColor Yellow
-Write-Host "║     " -ForegroundColor Cyan -NoNewline
+Write-Host " Advertencias / Glide     â•‘" -ForegroundColor Yellow
+Write-Host "â•‘     " -ForegroundColor Cyan -NoNewline
 Write-Host " INFO  " -ForegroundColor Black -BackgroundColor DarkGreen -NoNewline
-Write-Host " Eventos / Éxito         " -ForegroundColor Green -NoNewline
+Write-Host " Eventos / Ã‰xito         " -ForegroundColor Green -NoNewline
 Write-Host " DEBUG " -ForegroundColor Black -BackgroundColor DarkCyan -NoNewline
-Write-Host " Diagnóstico detallado    ║" -ForegroundColor Cyan
-Write-Host "║                                                                              ║" -ForegroundColor Cyan
-Write-Host "║  Etiquetas   : " -ForegroundColor Cyan -NoNewline
+Write-Host " DiagnÃ³stico detallado    â•‘" -ForegroundColor Cyan
+Write-Host "â•‘                                                                              â•‘" -ForegroundColor Cyan
+Write-Host "â•‘  Etiquetas   : " -ForegroundColor Cyan -NoNewline
 Write-Host "[Provider]" -ForegroundColor Magenta -NoNewline
 Write-Host " " -NoNewline
 Write-Host "[WhatsApp]" -ForegroundColor Green -NoNewline
@@ -54,18 +54,18 @@ Write-Host " " -NoNewline
 Write-Host "[Glide]" -ForegroundColor Yellow -NoNewline
 Write-Host " " -NoNewline
 Write-Host "[App]" -ForegroundColor DarkCyan -NoNewline
-Write-Host "                       ║" -ForegroundColor Cyan
-Write-Host "║  Detener     : Presiona " -ForegroundColor Cyan -NoNewline
+Write-Host "                       â•‘" -ForegroundColor Cyan
+Write-Host "â•‘  Detener     : Presiona " -ForegroundColor Cyan -NoNewline
 Write-Host "Ctrl + C" -ForegroundColor White -BackgroundColor DarkMagenta -NoNewline
-Write-Host " para finalizar la sesión.                        ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host " para finalizar la sesiÃ³n.                        â•‘" -ForegroundColor Cyan
+Write-Host "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•" -ForegroundColor Cyan
 Write-Host ""
 
 # Limpiar buffer anterior de logcat
 Write-Host "-> Limpiando buffer de logcat previo..." -ForegroundColor DarkGray
 & $adb logcat -c
 
-Write-Host "-> Escuchando eventos del teléfono en vivo..." -ForegroundColor Green
+Write-Host "-> Escuchando eventos del telÃ©fono en vivo..." -ForegroundColor Green
 Write-Host ""
 
 # Filtros relevantes
@@ -77,7 +77,7 @@ $lastWasError = $false
 & $adb logcat -v time | ForEach-Object {
     $line = $_
 
-    # Línea de formato estándar logcat: "MM-dd HH:mm:ss.fff L/Tag( PID): Mensaje"
+    # LÃ­nea de formato estÃ¡ndar logcat: "MM-dd HH:mm:ss.fff L/Tag( PID): Mensaje"
     if ($line -match '^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+([VDIWEF])\/(.*?)\(\s*(\d+)\s*\):\s*(.*)$') {
         $timeStr = $Matches[1]
         $timeShort = ($timeStr -split '\s+')[1]
@@ -86,23 +86,21 @@ $lastWasError = $false
         $procId = $Matches[4]
         $msg = $Matches[5]
 
-        # Excluir ruido del sistema (Xiaomi MIUI, daemons de red, baterias, contactos)
-        $isNoise = ($tag -match "(collectorManager|AppsFilter|ContactsProvider|SyncAccountUtils|ConnectivityService|Wifi|Factory|Power|Network|PackageManager|BufferQueue|libPower|nativeloader|WindowManager|ActivityTaskManager|ActivityManager|ForceDark)") -or
-                   ($msg -match "ThermalScenarioValue|QuickPerformanceLogger|queryReadonlyAccountTypes|Contacts query|PreloadedFbnsService|WebInstallAppLink|interaction: PackageSetting|Relayout Window|perfNotifyAppState|mDesktopPkgSet")
+        # Excluir ruido del sistema (Xiaomi MIUI, daemons de red, baterias, contactos, apps de terceros)
+        $isNoise = ($tag -match "(collectorManager|AppsFilter|ContactsProvider|SyncAccountUtils|ConnectivityService|Wifi|Factory|Power|Network|PackageManager|BufferQueue|libPower|nativeloader|WindowManager|ActivityTaskManager|ActivityManager|ForceDark|thermal|facebook|fb4a|katana|ProcessManager|Zygote|AppOps|CoreBackPreview|NotificationService|game_scn|DaemonThread|audit|libPowerHal|thermal_src|SurfaceFlinger|InputDispatcher|InputReader|OomAdjuster)") -or
+                   ($msg -match "(ThermalScenarioValue|QuickPerformanceLogger|queryReadonlyAccountTypes|Contacts query|PreloadedFbnsService|WebInstallAppLink|interaction: PackageSetting|Relayout Window|perfNotifyAppState|mDesktopPkgSet|Toast already killed|Changing focus|wms\.Input focus|wms\.Focus not requested|finishDrawingLocked|showSurfaceRobustly|Update InputWindowHandle|setParent old)")
 
         if ($isNoise) {
             return
         }
 
-        # Si el tag es WhatsApp generico, solo mostrar eventos de stickers, validacion o errores
-        if ($tag -match "^(com\.whatsapp|WhatsApp)$") {
-            if ($msg -notmatch "sticker|third_party|whitelist|provider|content://|authority|AddThirdParty" -and $level -notin @("E", "F")) {
-                return
-            }
-        }
+        # Comprobar si coincide con eventos reales de nuestra app o de stickers
+        $isMyAppTag = ($tag -match "^(MainActivity|PackDetailActivity|StickerStorage|ImageProcessor|StickerContentProvider|StickerPackValidator|WhatsAppChecker|StickerPackAdapter|StickerGridAdapter)$")
+        $isStickerTag = ($tag -match "(StickerContentProvider|StickerPackValidator|WhatsAppChecker|AddThirdPartyStickerPackActivity)")
+        $isWhatsAppSticker = ($tag -match "WhatsApp" -and $msg -match "sticker|third_party|whitelist|provider|content://|authority|AddThirdParty")
+        $isAppLog = ($tag -match "stickermaker" -or ($tag -match "Glide" -and $msg -match "com.stickermaker.whatsapp"))
 
-        # Comprobar si coincide con el filtro de interes
-        $isRelevant = ($tag -match $pattern) -or ($msg -match $pattern) -or ($level -in @("E", "F") -and ($msg -match "stickermaker|whatsapp|Provider"))
+        $isRelevant = $isMyAppTag -or $isStickerTag -or $isWhatsAppSticker -or $isAppLog -or ($level -in @("E", "F") -and $msg -match "com\.stickermaker\.whatsapp")
 
         if (-not $isRelevant) {
             $lastWasError = $false
@@ -142,7 +140,7 @@ $lastWasError = $false
 
         Write-Host " " -NoNewline
 
-        # Tag con color temático
+        # Tag con color temÃ¡tico
         if ($tag -match "StickerContentProvider") {
             Write-Host "[$tag]" -ForegroundColor Magenta -NoNewline
         } elseif ($tag -match "WhatsApp|AddThirdPartyStickerPackActivity|WhatsAppChecker") {
@@ -159,14 +157,14 @@ $lastWasError = $false
 
         Write-Host ": " -ForegroundColor DarkGray -NoNewline
 
-        # Mensaje con color semántico
+        # Mensaje con color semÃ¡ntico
         if ($level -in @("E", "F") -or $msg -match "Exception|Error|fail|FATAL|Fallo") {
             Write-Host $msg -ForegroundColor Red
         } elseif ($level -eq "W" -or $msg -match "warn|Failed to find") {
             Write-Host $msg -ForegroundColor Yellow
-        } elseif ($msg -match "exito|éxito|success|agregado|added|OK|isPackWhitelisted.*true") {
+        } elseif ($msg -match "exito|Ã©xito|success|agregado|added|OK|isPackWhitelisted.*true") {
             Write-Host $msg -ForegroundColor Green
-        } elseif ($msg -match "query|cursor|uri=|mode=|resolvio|resolvió|openFile|openAssetFile") {
+        } elseif ($msg -match "query|cursor|uri=|mode=|resolvio|resolviÃ³|openFile|openAssetFile") {
             Write-Host $msg -ForegroundColor Cyan
         } elseif ($level -eq "I") {
             Write-Host $msg -ForegroundColor White
@@ -174,7 +172,7 @@ $lastWasError = $false
             Write-Host $msg -ForegroundColor Gray
         }
     } else {
-        # Líneas de continuación (Stack traces, Caused by, etc.)
+        # LÃ­neas de continuaciÃ³n (Stack traces, Caused by, etc.)
         if ($line -match "^\s+at\s+|^\s*Caused by:|Exception|Error") {
             Write-Host "             $line" -ForegroundColor Red
         } elseif ($lastWasError) {

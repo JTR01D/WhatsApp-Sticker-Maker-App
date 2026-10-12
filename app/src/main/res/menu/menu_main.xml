@@ -17,6 +17,11 @@
         android:title="Importar Paquete (.zip)"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_scan_whatsapp"
+        android:icon="@drawable/ic_folder"
+        android:title="Escanear Stickers de WhatsApp Oficial"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_delete_all_packs"
         android:icon="@drawable/ic_delete"
         android:title="Vaciar / Eliminar Todos los Paquetes"
