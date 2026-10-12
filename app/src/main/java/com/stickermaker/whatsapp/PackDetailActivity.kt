@@ -692,43 +692,110 @@ class PackDetailActivity : AppCompatActivity() {
         val targetAnimatedUris = if (choice == 0 || choice == 2) animatedUris else emptyList()
 
         val current = StickerStorage.getPack(this@PackDetailActivity, packId) ?: return
+        val isPackInitiallyEmpty = current.stickers.isEmpty()
 
-        val availableSlots = (30 - current.stickers.size).coerceAtLeast(0)
-        if (availableSlots <= 0) {
-            withContext(Dispatchers.Main) {
-                binding.layoutProcessing.visibility = View.GONE
-                setControlsEnabled(true)
-                Toast.makeText(this@PackDetailActivity, "Este paquete ya tiene el límite máximo de 30 stickers", Toast.LENGTH_LONG).show()
+        val baseName = current.name
+            .replace(Regex(" \\(Parte \\d+\\)$"), "")
+            .replace(Regex(" - Animados.*$"), "")
+            .replace(Regex(" - Estáticos.*$"), "")
+            .trim()
+        val publisher = current.publisher
+
+        fun getUniquePackName(pattern: String): String {
+            val existing = StickerStorage.getAllPacks(this@PackDetailActivity)
+            var idx = 1
+            var candidate = pattern.replace("{idx}", idx.toString())
+            while (existing.any { it.name.equals(candidate, ignoreCase = true) }) {
+                idx++
+                candidate = pattern.replace("{idx}", idx.toString())
             }
-            return
+            return candidate
         }
 
-        // Choose URIs matching pack type or user choice
-        val chosenUris = when {
-            choice == 0 -> targetAnimatedUris
-            choice == 1 -> targetStaticUris
-            else -> {
-                if (current.stickers.isEmpty()) {
-                    if (targetAnimatedUris.isNotEmpty()) targetAnimatedUris else targetStaticUris
-                } else {
-                    if (current.animatedStickerPack) targetAnimatedUris else targetStaticUris
+        var addedCount = 0
+        var createdExtraPacks = 0
+        val newlyCreatedPackIds = mutableListOf<String>()
+
+        if (isPackInitiallyEmpty) {
+            // Pack nuevo/vacio: importar TODOS los stickers dividiendolos en paquetes validos (3..30 cada uno)
+            fun processListIntoPacks(uris: List<Uri>, isAnim: Boolean, namePattern: String, useCurrentFirst: Boolean) {
+                val chunks = partitionIntoValidPacks(uris)
+                for ((idx, chunk) in chunks.withIndex()) {
+                    val targetPackId: String
+                    val packName: String
+
+                    if (useCurrentFirst && idx == 0) {
+                        targetPackId = current.identifier
+                        packName = current.name
+                        current.animatedStickerPack = isAnim
+                        StickerStorage.savePack(this@PackDetailActivity, current)
+                    } else {
+                        targetPackId = UUID.randomUUID().toString()
+                        packName = getUniquePackName(namePattern)
+                        newlyCreatedPackIds.add(targetPackId)
+                        val newPack = StickerPack(
+                            identifier = targetPackId,
+                            name = packName,
+                            publisher = publisher,
+                            trayImageFile = "",
+                            animatedStickerPack = isAnim
+                        )
+                        StickerStorage.savePack(this@PackDetailActivity, newPack)
+                        createdExtraPacks++
+                    }
+
+                    for (uri in chunk) {
+                        val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, targetPackId, uri)
+                        if (ok) addedCount++
+                        withContext(Dispatchers.Main) {
+                            binding.tvProcessingStatus.text = "Guardando en '$packName' ($addedCount stickers)..."
+                        }
+                    }
                 }
             }
-        }
 
-        val toProcess = chosenUris.take(availableSlots)
-        val omittedExcess = chosenUris.size - toProcess.size
-        var addedCount = 0
-
-        for ((idx, uri) in toProcess.withIndex()) {
-            val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
-            if (ok) addedCount++
-            val percent = ((idx + 1) * 100) / toProcess.size
-            withContext(Dispatchers.Main) {
-                binding.progressBarImport.progress = percent
-                binding.tvProcessingStatus.text = "Añadiendo stickers: ${idx + 1} de ${toProcess.size}..."
+            if (choice == 0) {
+                // Solo Animados
+                processListIntoPacks(targetAnimatedUris, true, "$baseName (Parte {idx})", useCurrentFirst = true)
+            } else if (choice == 1) {
+                // Solo Estaticos
+                processListIntoPacks(targetStaticUris, false, "$baseName (Parte {idx})", useCurrentFirst = true)
+            } else {
+                // Ambos: Animados al paquete actual (y partes), Estaticos en partes separadas
+                if (targetAnimatedUris.isNotEmpty()) {
+                    processListIntoPacks(targetAnimatedUris, true, "$baseName (Parte {idx})", useCurrentFirst = true)
+                    if (targetStaticUris.isNotEmpty()) {
+                        processListIntoPacks(targetStaticUris, false, "$baseName - Estáticos (Parte {idx})", useCurrentFirst = false)
+                    }
+                } else {
+                    processListIntoPacks(targetStaticUris, false, "$baseName (Parte {idx})", useCurrentFirst = true)
+                }
             }
-            yield()
+        } else {
+            // Paquete YA GENERADO: solo agregar stickers puntuales a ESTE paquete hasta 30. NUNCA crear paquetes extra!
+            val availableSlots = (30 - current.stickers.size).coerceAtLeast(0)
+            if (availableSlots <= 0) {
+                withContext(Dispatchers.Main) {
+                    binding.layoutProcessing.visibility = View.GONE
+                    setControlsEnabled(true)
+                    Toast.makeText(this@PackDetailActivity, "Este paquete ya tiene el límite máximo de 30 stickers", Toast.LENGTH_LONG).show()
+                }
+                return
+            }
+
+            val chosenUris = if (current.animatedStickerPack) targetAnimatedUris else targetStaticUris
+            val toProcess = chosenUris.take(availableSlots)
+
+            for ((idx, uri) in toProcess.withIndex()) {
+                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
+                if (ok) addedCount++
+                val percent = ((idx + 1) * 100) / toProcess.size
+                withContext(Dispatchers.Main) {
+                    binding.progressBarImport.progress = percent
+                    binding.tvProcessingStatus.text = "Añadiendo stickers: ${idx + 1} de ${toProcess.size}..."
+                }
+                yield()
+            }
         }
 
         withContext(Dispatchers.Main) {
@@ -737,11 +804,11 @@ class PackDetailActivity : AppCompatActivity() {
             loadPackData()
 
             val details = buildString {
-                appendLine("¡Stickers importados con éxito!\n")
-                appendLine("• ✅ $addedCount stickers añadidos a este paquete.")
-                if (omittedExcess > 0) {
-                    appendLine("• ⚠️ Se omitieron $omittedExcess stickers adicionales porque el paquete alcanzó el límite de 30 permitido por WhatsApp.")
+                appendLine("¡Importación completada con éxito!\n")
+                if (createdExtraPacks > 0) {
+                    appendLine("• 📦 Se crearon ${createdExtraPacks + 1} paquetes en total para cumplir con el límite oficial de WhatsApp (máximo 30 por paquete).")
                 }
+                appendLine("• ✅ $addedCount stickers añadidos.")
                 if (duplicatesCount > 0) {
                     appendLine("• 🧹 $duplicatesCount stickers duplicados omitidos automáticamente.")
                 }
@@ -751,7 +818,7 @@ class PackDetailActivity : AppCompatActivity() {
             }
 
             MaterialAlertDialogBuilder(this@PackDetailActivity)
-                .setTitle("¡Importación Completada!")
+                .setTitle("¡Importación Exitosa!")
                 .setMessage(details)
                 .setPositiveButton("Aceptar", null)
                 .show()
