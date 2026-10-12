@@ -15,8 +15,33 @@ class StickerPackAdapter(
     private val packs: MutableList<StickerPack>,
     private val onPackClick: (StickerPack) -> Unit,
     private val onAddToWhatsAppClick: (StickerPack) -> Unit,
-    private val onDeleteClick: (StickerPack) -> Unit
+    private val onDeleteClick: (StickerPack) -> Unit,
+    private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<StickerPackAdapter.PackViewHolder>() {
+
+    var isSelectionMode: Boolean = false
+        set(value) {
+            field = value
+            if (!value) {
+                selectedPackIds.clear()
+            }
+            notifyDataSetChanged()
+        }
+
+    val selectedPackIds = mutableSetOf<String>()
+
+    fun selectAll() {
+        selectedPackIds.clear()
+        selectedPackIds.addAll(packs.map { it.identifier })
+        onSelectionChanged(selectedPackIds.size)
+        notifyDataSetChanged()
+    }
+
+    fun deselectAll() {
+        selectedPackIds.clear()
+        onSelectionChanged(0)
+        notifyDataSetChanged()
+    }
 
     inner class PackViewHolder(private val binding: ItemPackBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -66,9 +91,40 @@ class StickerPackAdapter(
                 binding.btnAddToWhatsApp.setBackgroundColor(ContextCompat.getColor(context, R.color.accent_whatsapp))
             }
 
-            binding.root.setOnClickListener { onPackClick(pack) }
-            binding.btnAddToWhatsApp.setOnClickListener { onAddToWhatsAppClick(pack) }
-            binding.btnDeletePack.setOnClickListener { onDeleteClick(pack) }
+            if (isSelectionMode) {
+                binding.cbSelectPack.visibility = View.VISIBLE
+                binding.cbSelectPack.isChecked = selectedPackIds.contains(pack.identifier)
+                binding.btnDeletePack.visibility = View.GONE
+                binding.btnAddToWhatsApp.visibility = View.GONE
+
+                val toggleSelect = {
+                    if (selectedPackIds.contains(pack.identifier)) {
+                        selectedPackIds.remove(pack.identifier)
+                    } else {
+                        selectedPackIds.add(pack.identifier)
+                    }
+                    binding.cbSelectPack.isChecked = selectedPackIds.contains(pack.identifier)
+                    onSelectionChanged(selectedPackIds.size)
+                }
+
+                binding.cbSelectPack.setOnClickListener { toggleSelect() }
+                binding.root.setOnClickListener { toggleSelect() }
+            } else {
+                binding.cbSelectPack.visibility = View.GONE
+                binding.btnDeletePack.visibility = View.VISIBLE
+                binding.btnAddToWhatsApp.visibility = View.VISIBLE
+
+                binding.root.setOnClickListener { onPackClick(pack) }
+                binding.btnAddToWhatsApp.setOnClickListener { onAddToWhatsAppClick(pack) }
+                binding.btnDeletePack.setOnClickListener { onDeleteClick(pack) }
+
+                binding.root.setOnLongClickListener {
+                    isSelectionMode = true
+                    selectedPackIds.add(pack.identifier)
+                    onSelectionChanged(selectedPackIds.size)
+                    true
+                }
+            }
         }
     }
 

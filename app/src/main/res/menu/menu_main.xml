@@ -2,9 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_add_multiple_whatsapp"
+        android:icon="@drawable/ic_whatsapp"
+        android:title="Añadir Varios a WhatsApp"
+        app:showAsAction="ifRoom" />
+    <item
         android:id="@+id/action_share_all_zip"
         android:icon="@drawable/ic_share"
-        android:title="Compartir Todos (.zip)"
+        android:title="Compartir Colección (.zip)"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/action_import_zip"

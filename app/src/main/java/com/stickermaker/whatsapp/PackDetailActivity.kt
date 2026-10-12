@@ -90,9 +90,23 @@ class PackDetailActivity : AppCompatActivity() {
         }
 
         setupToolbar()
+        setupBackPressHandler()
         setupRecyclerView()
         setupListeners()
         loadPackData()
+    }
+
+    private fun setupBackPressHandler() {
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (adapter.isSelectionMode) {
+                    exitStickerSelectionMode()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
     }
 
     private fun setupToolbar() {
@@ -105,8 +119,15 @@ class PackDetailActivity : AppCompatActivity() {
         adapter = StickerGridAdapter(
             packId = packId,
             stickers = mutableListOf(),
+            trayFileName = currentPack?.trayImageFile.orEmpty(),
+            onStickerClick = { sticker ->
+                showStickerPreviewDialog(sticker)
+            },
             onDeleteStickerClick = { sticker ->
                 confirmDeleteSticker(sticker)
+            },
+            onSelectionChanged = { selectedCount ->
+                updateStickerSelectionUi(selectedCount)
             }
         )
 
@@ -115,6 +136,32 @@ class PackDetailActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        // Edit Pack Name
+        binding.btnEditPackName.setOnClickListener {
+            showEditPackNameDialog()
+        }
+
+        // Toggle Sticker Selection Mode
+        binding.btnManageStickers.setOnClickListener {
+            if (adapter.isSelectionMode) {
+                exitStickerSelectionMode()
+            } else {
+                enterStickerSelectionMode()
+            }
+        }
+
+        binding.btnSelectAllStickers.setOnClickListener {
+            adapter.selectAll()
+        }
+
+        binding.btnCloseStickerSelection.setOnClickListener {
+            exitStickerSelectionMode()
+        }
+
+        binding.btnDeleteSelectedStickers.setOnClickListener {
+            confirmDeleteSelectedStickers()
+        }
+
         // FAB shows choice dialog
         binding.fabAddStickers.setOnClickListener {
             showAddOptionsDialog()
@@ -382,7 +429,7 @@ class PackDetailActivity : AppCompatActivity() {
             }
         }
 
-        adapter.updateList(pack.stickers)
+        adapter.updateList(pack.stickers, pack.trayImageFile)
 
         if (pack.stickers.isEmpty()) {
             binding.layoutEmptyStickers.visibility = View.VISIBLE
@@ -866,6 +913,134 @@ class PackDetailActivity : AppCompatActivity() {
         binding.btnImportWhatsApp.isEnabled = enabled
         binding.btnImportFolder.isEnabled = enabled
         binding.btnImportFiles.isEnabled = enabled
+    }
+
+    private fun enterStickerSelectionMode() {
+        adapter.isSelectionMode = true
+        binding.layoutStickerSelectionActions.visibility = View.VISIBLE
+        binding.btnManageStickers.text = "Listo"
+        updateStickerSelectionUi(adapter.selectedStickerNames.size)
+    }
+
+    private fun exitStickerSelectionMode() {
+        adapter.isSelectionMode = false
+        binding.layoutStickerSelectionActions.visibility = View.GONE
+        binding.btnManageStickers.text = "Seleccionar"
+    }
+
+    private fun updateStickerSelectionUi(count: Int) {
+        if (adapter.isSelectionMode) {
+            binding.layoutStickerSelectionActions.visibility = View.VISIBLE
+            binding.btnManageStickers.text = "Listo"
+            binding.tvStickerSelectionCount.text = "$count seleccionados"
+            binding.btnDeleteSelectedStickers.isEnabled = count > 0
+            binding.btnDeleteSelectedStickers.alpha = if (count > 0) 1.0f else 0.5f
+        } else {
+            binding.layoutStickerSelectionActions.visibility = View.GONE
+            binding.btnManageStickers.text = "Seleccionar"
+        }
+    }
+
+    private fun confirmDeleteSelectedStickers() {
+        val selected = adapter.selectedStickerNames.toList()
+        if (selected.isEmpty()) return
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("¿Eliminar ${selected.size} stickers?")
+            .setMessage("Se eliminarán los stickers seleccionados de este paquete.")
+            .setPositiveButton(R.string.delete) { _, _ ->
+                val pack = currentPack ?: return@setPositiveButton
+                for (name in selected) {
+                    StickerStorage.removeStickerFromPack(this, packId, name)
+                }
+                exitStickerSelectionMode()
+                loadPackData()
+                Toast.makeText(this, "${selected.size} stickers eliminados", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showEditPackNameDialog() {
+        val pack = currentPack ?: return
+        val input = android.widget.EditText(this).apply {
+            setText(pack.name)
+            setSelection(text.length)
+            setPadding(48, 32, 48, 32)
+            setTextColor(getColor(R.color.text_primary))
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Editar nombre del paquete")
+            .setView(input)
+            .setPositiveButton("Guardar") { _, _ ->
+                val newName = input.text.toString().trim()
+                if (newName.isNotEmpty() && newName != pack.name) {
+                    pack.name = newName
+                    StickerStorage.savePack(this, pack)
+                    loadPackData()
+                    Toast.makeText(this, "Nombre actualizado a '$newName'", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showStickerPreviewDialog(sticker: Sticker) {
+        val pack = currentPack ?: return
+        val stickerFile = StickerStorage.getStickerFile(this, packId, sticker.imageFileName)
+        if (!stickerFile.exists()) return
+
+        val dialogBinding = com.stickermaker.whatsapp.databinding.DialogStickerPreviewBinding.inflate(layoutInflater)
+        Glide.with(this).load(stickerFile).into(dialogBinding.imgPreviewSticker)
+
+        val isAnimated = ImageProcessor.isAnimatedWebP(this, Uri.fromFile(stickerFile))
+        val sizeKb = stickerFile.length() / 1024
+        dialogBinding.tvStickerInfo.text = if (isAnimated) "🎬 Sticker animado WebP ($sizeKb KB)" else "🖼️ Sticker estático WebP ($sizeKb KB)"
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogBinding.root)
+            .create()
+
+        // Set as tray icon
+        dialogBinding.btnSetAsTrayIcon.setOnClickListener {
+            val trayFile = StickerStorage.getStickerFile(this, packId, "tray_${packId}.webp")
+            val success = ImageProcessor.generateTrayIcon(this, Uri.fromFile(stickerFile), trayFile)
+            if (success) {
+                pack.trayImageFile = "tray_${packId}.webp"
+                StickerStorage.savePack(this, pack)
+                loadPackData()
+                Toast.makeText(this, "🌟 ¡Sticker establecido como ícono del paquete!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "No se pudo generar el ícono", Toast.LENGTH_SHORT).show()
+            }
+            dialog.dismiss()
+        }
+
+        // Share single sticker
+        dialogBinding.btnShareSingleSticker.setOnClickListener {
+            try {
+                val authority = "${applicationContext.packageName}.fileprovider"
+                val uri = androidx.core.content.FileProvider.getUriForFile(this, authority, stickerFile)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/webp"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(shareIntent, "Compartir sticker por WhatsApp"))
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error al compartir: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+            dialog.dismiss()
+        }
+
+        // Delete single sticker
+        dialogBinding.btnDeleteSingleSticker.setOnClickListener {
+            dialog.dismiss()
+            confirmDeleteSticker(sticker)
+        }
+
+        dialog.show()
     }
 
     private fun confirmDeleteSticker(sticker: Sticker) {
