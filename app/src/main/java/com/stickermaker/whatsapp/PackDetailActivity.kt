@@ -21,8 +21,10 @@ import com.stickermaker.whatsapp.utils.StickerStorage
 import com.stickermaker.whatsapp.utils.WhatsAppChecker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+import kotlin.coroutines.resume
 import java.util.UUID
 
 class PackDetailActivity : AppCompatActivity() {
@@ -292,7 +294,7 @@ class PackDetailActivity : AppCompatActivity() {
         val animatedUris = mutableListOf<Uri>()
 
         withContext(Dispatchers.Main) {
-            binding.tvProcessingStatus.text = "Clasificando $totalCount stickers (estáticos y con movimiento)..."
+            binding.tvProcessingStatus.text = "Escaneando $totalCount stickers (estáticos y con movimiento)..."
             binding.progressBarImport.progress = 0
         }
 
@@ -310,6 +312,55 @@ class PackDetailActivity : AppCompatActivity() {
                 yield()
             }
         }
+
+        // Ask the user what they want to import if both types are detected
+        val choice: Int = if (staticUris.isNotEmpty() && animatedUris.isNotEmpty()) {
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                suspendCancellableCoroutine { continuation ->
+                    val options = arrayOf(
+                        "🎬 Solo stickers animados (${animatedUris.size})",
+                        "🖼️ Solo stickers estáticos (${staticUris.size})",
+                        "✨ Importar ambos (${animatedUris.size + staticUris.size} en total)"
+                    )
+                    MaterialAlertDialogBuilder(this@PackDetailActivity)
+                        .setTitle("Stickers Detectados")
+                        .setMessage("Se encontraron en la carpeta:\n• 🎬 ${animatedUris.size} con movimiento (animados)\n• 🖼️ ${staticUris.size} estáticos\n\n¿Cuáles deseas importar a WhatsApp?")
+                        .setItems(options) { _, which ->
+                            continuation.resume(which)
+                        }
+                        .setNegativeButton(R.string.cancel) { _, _ ->
+                            continuation.resume(-1)
+                        }
+                        .setOnCancelListener {
+                            continuation.resume(-1)
+                        }
+                        .show()
+                }
+            }
+        } else if (animatedUris.isNotEmpty()) {
+            0 // Only animated found
+        } else {
+            1 // Only static found
+        }
+
+        if (choice == -1) {
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                setControlsEnabled(true)
+            }
+            return
+        }
+
+        withContext(Dispatchers.Main) {
+            binding.layoutProcessing.visibility = View.VISIBLE
+            binding.progressBarImport.progress = 0
+            binding.tvProcessingStatus.text = "Preparando importación..."
+        }
+
+        val targetStaticUris = if (choice == 1 || choice == 2) staticUris else emptyList()
+        val targetAnimatedUris = if (choice == 0 || choice == 2) animatedUris else emptyList()
+        val totalToProcess = targetStaticUris.size + targetAnimatedUris.size
 
         val current = StickerStorage.getPack(this@PackDetailActivity, packId) ?: return
         val baseName = current.name
@@ -341,7 +392,7 @@ class PackDetailActivity : AppCompatActivity() {
         val fillCurrentWithAnimated: Boolean
 
         if (current.stickers.isEmpty()) {
-            if (staticUris.isNotEmpty()) {
+            if (targetStaticUris.isNotEmpty()) {
                 fillCurrentWithStatic = true
                 fillCurrentWithAnimated = false
             } else {
@@ -361,99 +412,109 @@ class PackDetailActivity : AppCompatActivity() {
         val availableSlots = (30 - current.stickers.size).coerceAtLeast(0)
 
         // 1. Handle Static stickers
-        val staticForCurrent = if (fillCurrentWithStatic && availableSlots > 0) {
-            staticUris.take(availableSlots)
-        } else emptyList()
+        if (targetStaticUris.isNotEmpty()) {
+            val staticForCurrent = if (fillCurrentWithStatic && availableSlots > 0) {
+                targetStaticUris.take(availableSlots)
+            } else emptyList()
 
-        val staticForExtra = if (fillCurrentWithStatic) {
-            staticUris.drop(staticForCurrent.size)
-        } else staticUris
+            val staticForExtra = if (fillCurrentWithStatic) {
+                targetStaticUris.drop(staticForCurrent.size)
+            } else targetStaticUris
 
-        for (uri in staticForCurrent) {
-            val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
-            if (ok) addedStatic++
-            processedCount++
-            val percent = (processedCount * 100) / totalCount
-            withContext(Dispatchers.Main) {
-                binding.progressBarImport.progress = percent
-                binding.tvProcessingStatus.text = "Importando estáticos: $processedCount de $totalCount..."
-            }
-            yield()
-        }
-
-        val staticChunks = partitionIntoValidPacks(staticForExtra)
-        for (chunk in staticChunks) {
-            val newPackId = UUID.randomUUID().toString()
-            val newPackName = getUniquePackName("$baseName (Parte {idx})")
-            val newPack = StickerPack(
-                identifier = newPackId,
-                name = newPackName,
-                publisher = publisher,
-                trayImageFile = "",
-                animatedStickerPack = false
-            )
-            StickerStorage.savePack(this@PackDetailActivity, newPack)
-            createdExtraPacks++
-
-            for (uri in chunk) {
-                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newPackId, uri)
+            for (uri in staticForCurrent) {
+                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
                 if (ok) addedStatic++
                 processedCount++
-                val percent = (processedCount * 100) / totalCount
+                val percent = (processedCount * 100) / totalToProcess
                 withContext(Dispatchers.Main) {
                     binding.progressBarImport.progress = percent
-                    binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalCount..."
+                    binding.tvProcessingStatus.text = "Importando estáticos: $processedCount de $totalToProcess..."
                 }
                 yield()
+            }
+
+            val staticChunks = partitionIntoValidPacks(staticForExtra)
+            for (chunk in staticChunks) {
+                val newPackId = UUID.randomUUID().toString()
+                val newPackName = getUniquePackName("$baseName (Parte {idx})")
+                val newPack = StickerPack(
+                    identifier = newPackId,
+                    name = newPackName,
+                    publisher = publisher,
+                    trayImageFile = "",
+                    animatedStickerPack = false
+                )
+                StickerStorage.savePack(this@PackDetailActivity, newPack)
+                createdExtraPacks++
+
+                for (uri in chunk) {
+                    val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newPackId, uri)
+                    if (ok) addedStatic++
+                    processedCount++
+                    val percent = (processedCount * 100) / totalToProcess
+                    withContext(Dispatchers.Main) {
+                        binding.progressBarImport.progress = percent
+                        binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalToProcess..."
+                    }
+                    yield()
+                }
             }
         }
 
         // 2. Handle Animated stickers
-        val animatedSlots = if (fillCurrentWithAnimated) (30 - (StickerStorage.getPack(this@PackDetailActivity, packId)?.stickers?.size ?: 0)).coerceAtLeast(0) else 0
-        val animatedForCurrent = if (fillCurrentWithAnimated && animatedSlots > 0) {
-            animatedUris.take(animatedSlots)
-        } else emptyList()
+        if (targetAnimatedUris.isNotEmpty()) {
+            val animatedSlots = if (fillCurrentWithAnimated) (30 - (StickerStorage.getPack(this@PackDetailActivity, packId)?.stickers?.size ?: 0)).coerceAtLeast(0) else 0
+            val animatedForCurrent = if (fillCurrentWithAnimated && animatedSlots > 0) {
+                targetAnimatedUris.take(animatedSlots)
+            } else emptyList()
 
-        val animatedForExtra = if (fillCurrentWithAnimated) {
-            animatedUris.drop(animatedForCurrent.size)
-        } else animatedUris
+            val animatedForExtra = if (fillCurrentWithAnimated) {
+                targetAnimatedUris.drop(animatedForCurrent.size)
+            } else targetAnimatedUris
 
-        for (uri in animatedForCurrent) {
-            val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
-            if (ok) addedAnimated++
-            processedCount++
-            val percent = (processedCount * 100) / totalCount
-            withContext(Dispatchers.Main) {
-                binding.progressBarImport.progress = percent
-                binding.tvProcessingStatus.text = "Importando animados: $processedCount de $totalCount..."
-            }
-            yield()
-        }
-
-        val animatedChunks = partitionIntoValidPacks(animatedForExtra)
-        for (chunk in animatedChunks) {
-            val newPackId = UUID.randomUUID().toString()
-            val newPackName = getUniquePackName("$baseName - Animados (Parte {idx})")
-            val newPack = StickerPack(
-                identifier = newPackId,
-                name = newPackName,
-                publisher = publisher,
-                trayImageFile = "",
-                animatedStickerPack = true
-            )
-            StickerStorage.savePack(this@PackDetailActivity, newPack)
-            createdExtraPacks++
-
-            for (uri in chunk) {
-                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newPackId, uri)
+            for (uri in animatedForCurrent) {
+                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
                 if (ok) addedAnimated++
                 processedCount++
-                val percent = (processedCount * 100) / totalCount
+                val percent = (processedCount * 100) / totalToProcess
                 withContext(Dispatchers.Main) {
                     binding.progressBarImport.progress = percent
-                    binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalCount..."
+                    binding.tvProcessingStatus.text = "Importando animados: $processedCount de $totalToProcess..."
                 }
                 yield()
+            }
+
+            val animatedChunks = partitionIntoValidPacks(animatedForExtra)
+            val animatedPattern = if (targetStaticUris.isEmpty() && current.stickers.isEmpty()) {
+                "$baseName (Parte {idx})"
+            } else {
+                "$baseName - Animados (Parte {idx})"
+            }
+
+            for (chunk in animatedChunks) {
+                val newPackId = UUID.randomUUID().toString()
+                val newPackName = getUniquePackName(animatedPattern)
+                val newPack = StickerPack(
+                    identifier = newPackId,
+                    name = newPackName,
+                    publisher = publisher,
+                    trayImageFile = "",
+                    animatedStickerPack = true
+                )
+                StickerStorage.savePack(this@PackDetailActivity, newPack)
+                createdExtraPacks++
+
+                for (uri in chunk) {
+                    val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newPackId, uri)
+                    if (ok) addedAnimated++
+                    processedCount++
+                    val percent = (processedCount * 100) / totalToProcess
+                    withContext(Dispatchers.Main) {
+                        binding.progressBarImport.progress = percent
+                        binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalToProcess..."
+                    }
+                    yield()
+                }
             }
         }
 
@@ -464,11 +525,11 @@ class PackDetailActivity : AppCompatActivity() {
 
             val details = buildString {
                 append("Resultados de la importación:\n")
-                if (addedStatic > 0) append("• $addedStatic stickers estáticos\n")
-                if (addedAnimated > 0) append("• $addedAnimated stickers con movimiento (animados)\n")
-                if (invalidCount > 0) append("• $invalidCount archivos omitidos (no eran .webp)\n")
+                if (addedAnimated > 0) append("• 🎬 $addedAnimated stickers con movimiento (animados)\n")
+                if (addedStatic > 0) append("• 🖼️ $addedStatic stickers estáticos\n")
+                if (invalidCount > 0) append("• ⚠️ $invalidCount archivos omitidos (no eran .webp)\n")
                 if (createdExtraPacks > 0) {
-                    append("\nSe crearon $createdExtraPacks paquete(s) adicional(es) respetando los límites de 3 a 30 stickers y separando los animados de los estáticos como exige WhatsApp.")
+                    append("\nSe organizaron en $createdExtraPacks paquete(s) adicional(es) respetando los límites de 3 a 30 stickers por paquete para WhatsApp.")
                 }
             }
 
