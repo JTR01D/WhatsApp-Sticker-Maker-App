@@ -1,12 +1,14 @@
 package com.stickermaker.whatsapp
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.bumptech.glide.Glide
@@ -14,6 +16,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.stickermaker.whatsapp.databinding.ActivityPackDetailBinding
 import com.stickermaker.whatsapp.model.Sticker
 import com.stickermaker.whatsapp.model.StickerPack
+import com.stickermaker.whatsapp.utils.ImageProcessor
 import com.stickermaker.whatsapp.utils.StickerStorage
 import com.stickermaker.whatsapp.utils.WhatsAppChecker
 import kotlinx.coroutines.Dispatchers
@@ -32,9 +35,17 @@ class PackDetailActivity : AppCompatActivity() {
     private var packId: String = ""
     private var currentPack: StickerPack? = null
 
-    // Multiple image selector from any location on the device
-    private val selectImagesLauncher =
-        registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+    // Launcher for selecting an entire folder from storage
+    private val selectFolderLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
+            if (treeUri != null) {
+                importWebpFromFolder(treeUri)
+            }
+        }
+
+    // Launcher for selecting individual or multiple .webp files strictly
+    private val selectFilesLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
             if (uris.isNotEmpty()) {
                 processSelectedImages(uris)
             }
@@ -78,8 +89,19 @@ class PackDetailActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        // FAB shows choice dialog (Folder or Files)
         binding.fabAddStickers.setOnClickListener {
-            checkAndPickImages()
+            showAddOptionsDialog()
+        }
+
+        // Direct button: Import Folder
+        binding.btnImportFolder.setOnClickListener {
+            launchFolderPicker()
+        }
+
+        // Direct button: Import Files
+        binding.btnImportFiles.setOnClickListener {
+            launchFilePicker()
         }
 
         binding.btnDetailAddToWhatsApp.setOnClickListener {
@@ -89,14 +111,42 @@ class PackDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun checkAndPickImages() {
+    private fun showAddOptionsDialog() {
+        val options = arrayOf(
+            "📁 Seleccionar Carpeta completa (.webp)",
+            "🖼️ Seleccionar Archivos sueltos (.webp)"
+        )
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Importar Stickers .webp")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> launchFolderPicker()
+                    1 -> launchFilePicker()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun launchFolderPicker() {
         currentPack?.let { pack ->
             if (pack.stickers.size >= 30) {
                 Toast.makeText(this, "Este paquete ya tiene el límite máximo de 30 stickers", Toast.LENGTH_SHORT).show()
                 return
             }
         }
-        selectImagesLauncher.launch("image/*")
+        selectFolderLauncher.launch(null)
+    }
+
+    private fun launchFilePicker() {
+        currentPack?.let { pack ->
+            if (pack.stickers.size >= 30) {
+                Toast.makeText(this, "Este paquete ya tiene el límite máximo de 30 stickers", Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+        selectFilesLauncher.launch(arrayOf("image/webp"))
     }
 
     private fun loadPackData() {
@@ -148,40 +198,125 @@ class PackDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun processSelectedImages(uris: List<android.net.Uri>) {
+    /**
+     * Scans selected folder and imports ONLY .webp files, excluding all others.
+     */
+    private fun importWebpFromFolder(treeUri: Uri) {
         binding.layoutProcessing.visibility = View.VISIBLE
-        binding.fabAddStickers.isEnabled = false
+        setControlsEnabled(false)
 
         lifecycleScope.launch(Dispatchers.IO) {
+            val rootDir = DocumentFile.fromTreeUri(this@PackDetailActivity, treeUri)
+            val webpUris = mutableListOf<Uri>()
+
+            rootDir?.listFiles()?.forEach { file ->
+                val name = file.name.orEmpty()
+                if (file.isFile && (name.endsWith(".webp", ignoreCase = true) || file.type == "image/webp")) {
+                    webpUris.add(file.uri)
+                }
+            }
+
+            if (webpUris.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    binding.layoutProcessing.visibility = View.GONE
+                    setControlsEnabled(true)
+                    Toast.makeText(
+                        this@PackDetailActivity,
+                        "No se encontraron archivos .webp en la carpeta seleccionada",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                return@launch
+            }
+
             var addedCount = 0
-            for (uri in uris) {
+            var nonWebpCount = 0
+
+            for (uri in webpUris) {
                 val pack = StickerStorage.getPack(this@PackDetailActivity, packId) ?: break
                 if (pack.stickers.size >= 30) break
 
                 val success = StickerStorage.addStickerToPack(this@PackDetailActivity, packId, uri)
-                if (success) addedCount++
+                if (success) {
+                    addedCount++
+                } else {
+                    nonWebpCount++
+                }
             }
 
             withContext(Dispatchers.Main) {
                 binding.layoutProcessing.visibility = View.GONE
-                binding.fabAddStickers.isEnabled = true
+                setControlsEnabled(true)
                 loadPackData()
 
                 if (addedCount > 0) {
-                    Toast.makeText(
-                        this@PackDetailActivity,
-                        "Se agregaron $addedCount stickers con éxito",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    val msg = if (nonWebpCount > 0) {
+                        "Se importaron $addedCount stickers .webp ($nonWebpCount archivos no válidos excluidos)"
+                    } else {
+                        "Se importaron $addedCount stickers .webp exitosamente"
+                    }
+                    Toast.makeText(this@PackDetailActivity, msg, Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(
                         this@PackDetailActivity,
-                        "No se pudieron procesar las imágenes seleccionadas",
+                        "Ningún archivo cumplió el formato .webp requerido",
                         Toast.LENGTH_LONG
                     ).show()
                 }
             }
         }
+    }
+
+    /**
+     * Processes individually selected files, strictly checking for .webp format.
+     */
+    private fun processSelectedImages(uris: List<Uri>) {
+        binding.layoutProcessing.visibility = View.VISIBLE
+        setControlsEnabled(false)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            var addedCount = 0
+            var excludedCount = 0
+
+            for (uri in uris) {
+                val pack = StickerStorage.getPack(this@PackDetailActivity, packId) ?: break
+                if (pack.stickers.size >= 30) break
+
+                val success = StickerStorage.addStickerToPack(this@PackDetailActivity, packId, uri)
+                if (success) {
+                    addedCount++
+                } else {
+                    excludedCount++
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                setControlsEnabled(true)
+                loadPackData()
+
+                if (addedCount > 0) {
+                    val msg = if (excludedCount > 0) {
+                        "Se agregaron $addedCount stickers .webp ($excludedCount archivos no .webp excluidos)"
+                    } else {
+                        "Se agregaron $addedCount stickers .webp"
+                    }
+                    Toast.makeText(this@PackDetailActivity, msg, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(
+                        this@PackDetailActivity,
+                        "Solo se admiten archivos .webp. El resto de formatos fue excluido.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun setControlsEnabled(enabled: Boolean) {
+        binding.fabAddStickers.isEnabled = enabled
+        binding.btnImportFolder.isEnabled = enabled
+        binding.btnImportFiles.isEnabled = enabled
     }
 
     private fun confirmDeleteSticker(sticker: Sticker) {

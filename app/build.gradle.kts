@@ -11,8 +11,8 @@ android {
         applicationId = "com.stickermaker.whatsapp"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -57,6 +57,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
     // Image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")

@@ -17,18 +17,70 @@ import kotlin.math.min
 object ImageProcessor {
 
     private const val STICKER_SIZE = 512
-    private const val STICKER_SAFE_MARGIN = 16 // Margin recommended by WhatsApp
+    private const val STICKER_SAFE_MARGIN = 16
     private const val MAX_STICKER_BYTES = 100 * 1024 // 100 KB limit for WhatsApp
 
     private const val TRAY_SIZE = 96
     private const val MAX_TRAY_BYTES = 50 * 1024 // 50 KB limit for tray icon
 
     /**
-     * Reads an image Uri from any location on the device, scales it to 512x512
-     * centered with transparency, compresses to WebP (<100KB), and writes to target file.
+     * Checks if a Uri points strictly to a WebP file by reading its magic bytes (RIFF....WEBP).
+     */
+    fun isStrictlyWebP(context: Context, sourceUri: Uri): Boolean {
+        return try {
+            context.contentResolver.openInputStream(sourceUri)?.use { stream ->
+                val header = ByteArray(12)
+                val bytesRead = stream.read(header)
+                if (bytesRead >= 12) {
+                    header[0] == 'R'.code.toByte() &&
+                    header[1] == 'I'.code.toByte() &&
+                    header[2] == 'F'.code.toByte() &&
+                    header[3] == 'F'.code.toByte() &&
+                    header[8] == 'W'.code.toByte() &&
+                    header[9] == 'E'.code.toByte() &&
+                    header[10] == 'B'.code.toByte() &&
+                    header[11] == 'P'.code.toByte()
+                } else {
+                    false
+                }
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Strictly processes a WebP image. Excludes any other format.
+     * If already 512x512 and <100KB, copies it directly.
+     * Otherwise, centers and adjusts to 512x512 WebP (<100KB).
      */
     fun processStickerImage(context: Context, sourceUri: Uri, destinationFile: File): Boolean {
+        // Enforce strict WebP format check
+        if (!isStrictlyWebP(context, sourceUri)) {
+            return false
+        }
+
         return try {
+            // Check original dimensions and size
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            context.contentResolver.openInputStream(sourceUri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            }
+
+            val isExactSquare512 = options.outWidth == STICKER_SIZE && options.outHeight == STICKER_SIZE
+
+            // If already exact 512x512 and file size is <= 100KB, copy directly to preserve exact quality
+            if (isExactSquare512) {
+                val rawBytes = context.contentResolver.openInputStream(sourceUri)?.use { it.readBytes() }
+                if (rawBytes != null && rawBytes.size <= MAX_STICKER_BYTES) {
+                    FileOutputStream(destinationFile).use { it.write(rawBytes) }
+                    return true
+                }
+            }
+
+            // Otherwise, decode, scale to 512x512, and compress
             val inputStream: InputStream? = context.contentResolver.openInputStream(sourceUri)
             val originalBitmap = BitmapFactory.decodeStream(inputStream)
             inputStream?.close()
@@ -38,7 +90,7 @@ object ImageProcessor {
             val scaledBitmap = fitAndCenterOnCanvas(
                 originalBitmap,
                 targetSize = STICKER_SIZE,
-                margin = STICKER_SAFE_MARGIN
+                margin = if (isExactSquare512) 0 else STICKER_SAFE_MARGIN
             )
 
             val compressedBytes = compressToWebP(scaledBitmap, MAX_STICKER_BYTES)
@@ -58,7 +110,7 @@ object ImageProcessor {
     }
 
     /**
-     * Generates a 96x96 tray icon in WebP format (<50KB) from an existing sticker or image.
+     * Generates a 96x96 tray icon in WebP format (<50KB).
      */
     fun generateTrayIcon(context: Context, sourceUri: Uri, destinationFile: File): Boolean {
         return try {
@@ -90,10 +142,6 @@ object ImageProcessor {
         }
     }
 
-    /**
-     * Scales an image to fit inside targetSize x targetSize without distortion,
-     * placing it centered on a transparent background with the specified margin.
-     */
     private fun fitAndCenterOnCanvas(source: Bitmap, targetSize: Int, margin: Int): Bitmap {
         val output = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
@@ -116,9 +164,6 @@ object ImageProcessor {
         return output
     }
 
-    /**
-     * Compresses the bitmap to WebP ensuring file size remains under maxByteLimit.
-     */
     private fun compressToWebP(bitmap: Bitmap, maxByteLimit: Int): ByteArray? {
         @Suppress("DEPRECATION")
         val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
