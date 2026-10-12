@@ -1,6 +1,7 @@
 package com.stickermaker.whatsapp.utils
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,7 +16,10 @@ object WhatsAppChecker {
     const val EXTRA_STICKER_PACK_AUTHORITY = "extra_sticker_pack_authority"
     const val EXTRA_STICKER_PACK_NAME = "extra_sticker_pack_name"
 
-    const val ACTION_ENABLE_STICKER_PACK = "com.whatsapp.sticker.intent.action.ENABLE_STICKER_PACK"
+    // Official WhatsApp action string registered in Android
+    const val ACTION_ENABLE_STICKER_PACK = "com.whatsapp.intent.action.ENABLE_STICKER_PACK"
+    const val ACTION_ENABLE_STICKER_PACK_LEGACY = "com.whatsapp.sticker.intent.action.ENABLE_STICKER_PACK"
+
     const val WHATSAPP_PACKAGE_NAME = "com.whatsapp"
     const val WHATSAPP_BUSINESS_PACKAGE_NAME = "com.whatsapp.w4b"
 
@@ -58,7 +62,7 @@ object WhatsAppChecker {
     }
 
     /**
-     * Sends the sticker pack to WhatsApp.
+     * Sends the sticker pack to WhatsApp using the verified official intent action.
      */
     fun addPackToWhatsApp(activity: Activity, pack: StickerPack, requestCode: Int) {
         if (!isWhatsAppInstalled(activity)) {
@@ -84,21 +88,38 @@ object WhatsAppChecker {
             return
         }
 
-        try {
-            val intent = Intent().apply {
-                action = ACTION_ENABLE_STICKER_PACK
-                putExtra(EXTRA_STICKER_PACK_ID, pack.identifier)
-                putExtra(EXTRA_STICKER_PACK_AUTHORITY, BuildConfig.CONTENT_PROVIDER_AUTHORITY)
-                putExtra(EXTRA_STICKER_PACK_NAME, pack.name)
+        val targetPackage = if (isPackageInstalled(activity, WHATSAPP_PACKAGE_NAME)) {
+            WHATSAPP_PACKAGE_NAME
+        } else {
+            WHATSAPP_BUSINESS_PACKAGE_NAME
+        }
 
-                // Prefer regular WhatsApp if installed, else Business
-                if (isPackageInstalled(activity, WHATSAPP_PACKAGE_NAME)) {
-                    setPackage(WHATSAPP_PACKAGE_NAME)
-                } else if (isPackageInstalled(activity, WHATSAPP_BUSINESS_PACKAGE_NAME)) {
-                    setPackage(WHATSAPP_BUSINESS_PACKAGE_NAME)
-                }
-            }
+        // Try official action (com.whatsapp.intent.action.ENABLE_STICKER_PACK)
+        val intent = Intent().apply {
+            action = ACTION_ENABLE_STICKER_PACK
+            putExtra(EXTRA_STICKER_PACK_ID, pack.identifier)
+            putExtra(EXTRA_STICKER_PACK_AUTHORITY, BuildConfig.CONTENT_PROVIDER_AUTHORITY)
+            putExtra(EXTRA_STICKER_PACK_NAME, pack.name)
+            setPackage(targetPackage)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        try {
             activity.startActivityForResult(intent, requestCode)
+        } catch (e: ActivityNotFoundException) {
+            try {
+                val fallbackIntent = Intent().apply {
+                    action = ACTION_ENABLE_STICKER_PACK_LEGACY
+                    putExtra(EXTRA_STICKER_PACK_ID, pack.identifier)
+                    putExtra(EXTRA_STICKER_PACK_AUTHORITY, BuildConfig.CONTENT_PROVIDER_AUTHORITY)
+                    putExtra(EXTRA_STICKER_PACK_NAME, pack.name)
+                    setPackage(targetPackage)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                activity.startActivityForResult(fallbackIntent, requestCode)
+            } catch (ex: Exception) {
+                Toast.makeText(activity, "Error al abrir WhatsApp: ${ex.message}", Toast.LENGTH_LONG).show()
+            }
         } catch (e: Exception) {
             Toast.makeText(activity, "Error al abrir WhatsApp: ${e.message}", Toast.LENGTH_LONG).show()
         }
