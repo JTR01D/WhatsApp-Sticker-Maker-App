@@ -1,11 +1,15 @@
 package com.stickermaker.whatsapp
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.stickermaker.whatsapp.databinding.ActivityMainBinding
@@ -13,6 +17,9 @@ import com.stickermaker.whatsapp.databinding.DialogCreatePackBinding
 import com.stickermaker.whatsapp.model.StickerPack
 import com.stickermaker.whatsapp.utils.StickerStorage
 import com.stickermaker.whatsapp.utils.WhatsAppChecker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
@@ -68,10 +75,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIncomingZipIntent(intent: Intent) {
         val action = intent.action
-        val uri: android.net.Uri? = if (action == Intent.ACTION_VIEW) {
+        val uri: Uri? = if (action == Intent.ACTION_VIEW) {
             intent.data
         } else if (action == Intent.ACTION_SEND) {
-            intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+            }
         } else {
             null
         }
@@ -88,7 +100,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun importZipFile(uri: android.net.Uri) {
+    private fun importZipFile(uri: Uri) {
         val progressDialog = MaterialAlertDialogBuilder(this)
             .setTitle("Importando Paquete ZIP")
             .setMessage("Descomprimiendo y verificando stickers duplicados...")
@@ -96,9 +108,9 @@ class MainActivity : AppCompatActivity() {
             .create()
         progressDialog.show()
 
-        androidx.lifecycle.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(Dispatchers.IO) {
             val result = StickerStorage.importPackFromZip(this@MainActivity, uri)
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
                 progressDialog.dismiss()
                 if (result.success) {
                     val msg = buildString {
