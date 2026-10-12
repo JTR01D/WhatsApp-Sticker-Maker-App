@@ -2,6 +2,7 @@ package com.stickermaker.whatsapp
 
 import android.content.ContentProvider
 import android.content.ContentValues
+import android.content.Context
 import android.content.UriMatcher
 import android.content.res.AssetFileDescriptor
 import android.database.Cursor
@@ -20,6 +21,7 @@ class StickerContentProvider : ContentProvider() {
         private const val METADATA_PACK = 2
         private const val STICKERS = 3
         private const val STICKERS_ASSET = 4
+        private const val STICKER_PACK_TRAY_ICON = 5
 
         // WhatsApp Metadata columns
         private const val STICKER_PACK_IDENTIFIER = "sticker_pack_identifier"
@@ -49,6 +51,7 @@ class StickerContentProvider : ContentProvider() {
         uriMatcher.addURI(authority, "metadata/*", METADATA_PACK)
         uriMatcher.addURI(authority, "stickers/*", STICKERS)
         uriMatcher.addURI(authority, "stickers_asset/*/*", STICKERS_ASSET)
+        uriMatcher.addURI(authority, "stickers_asset/*", STICKER_PACK_TRAY_ICON)
         return true
     }
 
@@ -133,25 +136,44 @@ class StickerContentProvider : ContentProvider() {
         val context = context ?: throw FileNotFoundException("Context is null")
         val match = uriMatcher.match(uri)
 
-        if (match != STICKERS_ASSET) {
-            throw IllegalArgumentException("Unsupported URI for openAssetFile: $uri")
-        }
-
-        val pathSegments = uri.pathSegments
-        if (pathSegments.size < 3) {
-            throw FileNotFoundException("Invalid URI segments: $uri")
-        }
-
-        val packId = pathSegments[pathSegments.size - 2]
-        val fileName = pathSegments[pathSegments.size - 1]
-
-        val file = StickerStorage.getStickerFile(context, packId, fileName)
-        if (!file.exists()) {
-            throw FileNotFoundException("Sticker file does not exist: ${file.absolutePath}")
+        val file: File = when (match) {
+            STICKERS_ASSET -> {
+                val pathSegments = uri.pathSegments
+                val packId = pathSegments[pathSegments.size - 2]
+                val fileName = pathSegments[pathSegments.size - 1]
+                val targetFile = StickerStorage.getStickerFile(context, packId, fileName)
+                if (!targetFile.exists()) {
+                    throw FileNotFoundException("Sticker file does not exist: ${targetFile.absolutePath}")
+                }
+                targetFile
+            }
+            STICKER_PACK_TRAY_ICON -> {
+                val fileName = uri.lastPathSegment ?: throw FileNotFoundException("No file name in URI: $uri")
+                findTrayIconFile(context, fileName) ?: throw FileNotFoundException("Tray icon does not exist: $fileName")
+            }
+            else -> throw IllegalArgumentException("Unsupported URI for openAssetFile: $uri")
         }
 
         val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
         return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
+    }
+
+    private fun findTrayIconFile(context: Context, fileName: String): File? {
+        val packs = StickerStorage.getAllPacks(context)
+        for (pack in packs) {
+            if (pack.trayImageFile == fileName) {
+                val file = StickerStorage.getStickerFile(context, pack.identifier, fileName)
+                if (file.exists()) return file
+            }
+        }
+        val rootDir = File(context.filesDir, "stickers")
+        rootDir.listFiles()?.forEach { dir ->
+            if (dir.isDirectory) {
+                val candidate = File(dir, fileName)
+                if (candidate.exists()) return candidate
+            }
+        }
+        return null
     }
 
     override fun getType(uri: Uri): String? {
@@ -160,6 +182,7 @@ class StickerContentProvider : ContentProvider() {
             METADATA_PACK -> "vnd.android.cursor.item/vnd.${BuildConfig.CONTENT_PROVIDER_AUTHORITY}.metadata"
             STICKERS -> "vnd.android.cursor.dir/vnd.${BuildConfig.CONTENT_PROVIDER_AUTHORITY}.stickers"
             STICKERS_ASSET -> "image/webp"
+            STICKER_PACK_TRAY_ICON -> "image/webp"
             else -> throw IllegalArgumentException("Unknown URI: $uri")
         }
     }

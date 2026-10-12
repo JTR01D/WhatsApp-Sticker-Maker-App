@@ -335,6 +335,14 @@ class PackDetailActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == ADD_PACK_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(this, "¡Paquete añadido a WhatsApp con éxito!", Toast.LENGTH_SHORT).show()
+            } else {
+                val error = data?.getStringExtra("validation_error")
+                if (!error.isNullOrEmpty()) {
+                    Toast.makeText(this, "WhatsApp error: $error", Toast.LENGTH_LONG).show()
+                }
+            }
             loadPackData()
         }
     }
