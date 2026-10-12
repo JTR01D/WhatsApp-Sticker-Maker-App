@@ -62,7 +62,7 @@
         app:boxCornerRadiusTopStart="14dp"
         app:boxStrokeColor="@color/accent_whatsapp"
         app:helperText="Ejemplo: Mis Memes, Favoritos, Risas"
-        app:helperTextColor="@color/text_secondary"
+        app:helperTextTextColor="@color/text_secondary"
         app:hintTextColor="@color/accent_whatsapp">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -88,7 +88,7 @@
         app:boxCornerRadiusTopStart="14dp"
         app:boxStrokeColor="@color/accent_whatsapp"
         app:helperText="Ejemplo: Juan, Personal"
-        app:helperTextColor="@color/text_secondary"
+        app:helperTextTextColor="@color/text_secondary"
         app:hintTextColor="@color/accent_whatsapp">
 
         <com.google.android.material.textfield.TextInputEditText
