@@ -335,12 +335,15 @@ class PackDetailActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == ADD_PACK_REQUEST_CODE) {
+            val error = data?.getStringExtra("validation_error")
+            android.util.Log.d("PackDetailActivity", "onActivityResult de WhatsApp: resultCode=$resultCode (RESULT_OK=${RESULT_OK}), error=$error, data=$data")
             if (resultCode == RESULT_OK) {
                 Toast.makeText(this, "¡Paquete añadido a WhatsApp con éxito!", Toast.LENGTH_SHORT).show()
             } else {
-                val error = data?.getStringExtra("validation_error")
                 if (!error.isNullOrEmpty()) {
                     Toast.makeText(this, "WhatsApp error: $error", Toast.LENGTH_LONG).show()
+                } else if (resultCode == RESULT_CANCELED) {
+                    android.util.Log.d("PackDetailActivity", "WhatsApp canceló la adición o el diálogo fue cerrado")
                 }
             }
             loadPackData()

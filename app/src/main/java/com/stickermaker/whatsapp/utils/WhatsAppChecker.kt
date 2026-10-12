@@ -12,9 +12,10 @@ import com.stickermaker.whatsapp.model.StickerPack
 
 object WhatsAppChecker {
 
-    const val EXTRA_STICKER_PACK_ID = "extra_sticker_pack_id"
-    const val EXTRA_STICKER_PACK_AUTHORITY = "extra_sticker_pack_authority"
-    const val EXTRA_STICKER_PACK_NAME = "extra_sticker_pack_name"
+    // Official WhatsApp intent extra keys
+    const val EXTRA_STICKER_PACK_ID = "sticker_pack_id"
+    const val EXTRA_STICKER_PACK_AUTHORITY = "sticker_pack_authority"
+    const val EXTRA_STICKER_PACK_NAME = "sticker_pack_name"
 
     // Official WhatsApp action string registered in Android
     const val ACTION_ENABLE_STICKER_PACK = "com.whatsapp.intent.action.ENABLE_STICKER_PACK"
@@ -22,6 +23,8 @@ object WhatsAppChecker {
 
     const val WHATSAPP_PACKAGE_NAME = "com.whatsapp"
     const val WHATSAPP_BUSINESS_PACKAGE_NAME = "com.whatsapp.w4b"
+
+    private const val TAG = "WhatsAppChecker"
 
     fun isWhatsAppInstalled(context: Context): Boolean {
         return isPackageInstalled(context, WHATSAPP_PACKAGE_NAME) || isPackageInstalled(context, WHATSAPP_BUSINESS_PACKAGE_NAME)
@@ -55,8 +58,10 @@ object WhatsAppChecker {
                     isWhitelisted = it.getInt(0) == 1
                 }
             }
+            android.util.Log.d(TAG, "isPackWhitelisted ($identifier): $isWhitelisted")
             isWhitelisted
         } catch (e: Exception) {
+            android.util.Log.w(TAG, "Error checking whitelist: ${e.message}")
             false
         }
     }
@@ -94,12 +99,19 @@ object WhatsAppChecker {
             WHATSAPP_BUSINESS_PACKAGE_NAME
         }
 
-        // Try official action (com.whatsapp.intent.action.ENABLE_STICKER_PACK)
+        val authority = BuildConfig.CONTENT_PROVIDER_AUTHORITY
+        android.util.Log.d(TAG, "Lanzando Intent hacia WhatsApp: packId=${pack.identifier}, name=${pack.name}, authority=$authority, targetPackage=$targetPackage")
+
         val intent = Intent().apply {
             action = ACTION_ENABLE_STICKER_PACK
-            putExtra(EXTRA_STICKER_PACK_ID, pack.identifier)
-            putExtra(EXTRA_STICKER_PACK_AUTHORITY, BuildConfig.CONTENT_PROVIDER_AUTHORITY)
-            putExtra(EXTRA_STICKER_PACK_NAME, pack.name)
+            // Official keys
+            putExtra("sticker_pack_id", pack.identifier)
+            putExtra("sticker_pack_authority", authority)
+            putExtra("sticker_pack_name", pack.name)
+            // Legacy / alternate keys for backward compatibility
+            putExtra("extra_sticker_pack_id", pack.identifier)
+            putExtra("extra_sticker_pack_authority", authority)
+            putExtra("extra_sticker_pack_name", pack.name)
             setPackage(targetPackage)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
@@ -107,20 +119,26 @@ object WhatsAppChecker {
         try {
             activity.startActivityForResult(intent, requestCode)
         } catch (e: ActivityNotFoundException) {
+            android.util.Log.w(TAG, "Intent principal falló, probando legacy action: ${e.message}")
             try {
                 val fallbackIntent = Intent().apply {
                     action = ACTION_ENABLE_STICKER_PACK_LEGACY
-                    putExtra(EXTRA_STICKER_PACK_ID, pack.identifier)
-                    putExtra(EXTRA_STICKER_PACK_AUTHORITY, BuildConfig.CONTENT_PROVIDER_AUTHORITY)
-                    putExtra(EXTRA_STICKER_PACK_NAME, pack.name)
+                    putExtra("sticker_pack_id", pack.identifier)
+                    putExtra("sticker_pack_authority", authority)
+                    putExtra("sticker_pack_name", pack.name)
+                    putExtra("extra_sticker_pack_id", pack.identifier)
+                    putExtra("extra_sticker_pack_authority", authority)
+                    putExtra("extra_sticker_pack_name", pack.name)
                     setPackage(targetPackage)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 activity.startActivityForResult(fallbackIntent, requestCode)
             } catch (ex: Exception) {
+                android.util.Log.e(TAG, "Fallo total al abrir WhatsApp: ${ex.message}", ex)
                 Toast.makeText(activity, "Error al abrir WhatsApp: ${ex.message}", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
+            android.util.Log.e(TAG, "Excepción inesperada al abrir WhatsApp: ${e.message}", e)
             Toast.makeText(activity, "Error al abrir WhatsApp: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }

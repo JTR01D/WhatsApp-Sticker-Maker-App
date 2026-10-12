@@ -17,13 +17,15 @@ import java.io.FileNotFoundException
 class StickerContentProvider : ContentProvider() {
 
     companion object {
+        private const val TAG = "StickerContentProvider"
+
         private const val METADATA = 1
         private const val METADATA_PACK = 2
         private const val STICKERS = 3
         private const val STICKERS_ASSET = 4
         private const val STICKER_PACK_TRAY_ICON = 5
 
-        // WhatsApp Metadata columns
+        // Official WhatsApp Metadata columns
         private const val STICKER_PACK_IDENTIFIER = "sticker_pack_identifier"
         private const val STICKER_PACK_NAME = "sticker_pack_name"
         private const val STICKER_PACK_PUBLISHER = "sticker_pack_publisher"
@@ -35,18 +37,19 @@ class StickerContentProvider : ContentProvider() {
         private const val PRIVACY_POLICY_WEBSITE = "sticker_pack_privacy_policy_website"
         private const val LICENSE_AGREEMENT_WEBSITE = "sticker_pack_license_agreement_website"
         private const val IMAGE_DATA_VERSION = "image_data_version"
-        private const val AVOID_CACHE = "avoid_cache"
+        private const val AVOID_CACHE = "whatsapp_will_not_cache_stickers"
         private const val ANIMATED_STICKER_PACK = "animated_sticker_pack"
 
-        // WhatsApp Sticker columns
+        // Official WhatsApp Sticker columns
         private const val STICKER_FILE_NAME = "sticker_file_name"
-        private const val STICKER_FILE_EMOJI = "sticker_file_emojis"
+        private const val STICKER_FILE_EMOJI = "sticker_emoji"
     }
 
     private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH)
 
     override fun onCreate(): Boolean {
         val authority = BuildConfig.CONTENT_PROVIDER_AUTHORITY
+        android.util.Log.d(TAG, "onCreate: Inicializando StickerContentProvider con authority=$authority")
         uriMatcher.addURI(authority, "metadata", METADATA)
         uriMatcher.addURI(authority, "metadata/*", METADATA_PACK)
         uriMatcher.addURI(authority, "stickers/*", STICKERS)
@@ -62,24 +65,47 @@ class StickerContentProvider : ContentProvider() {
         selectionArgs: Array<out String>?,
         sortOrder: String?
     ): Cursor? {
-        val context = context ?: return null
+        val context = context ?: run {
+            android.util.Log.e(TAG, "query: context es null")
+            return null
+        }
+        val match = uriMatcher.match(uri)
+        android.util.Log.d(TAG, "query recibido: uri=$uri, match=$match")
 
-        return when (uriMatcher.match(uri)) {
+        return when (match) {
             METADATA -> {
                 val packs = StickerStorage.getAllPacks(context).filter { it.isReadyForWhatsApp }
+                android.util.Log.d(TAG, "query METADATA: devolviendo ${packs.size} paquetes listos")
                 getMetadataCursor(packs)
             }
             METADATA_PACK -> {
-                val packId = uri.lastPathSegment ?: return null
-                val pack = StickerStorage.getPack(context, packId) ?: return null
+                val packId = uri.lastPathSegment ?: run {
+                    android.util.Log.e(TAG, "query METADATA_PACK: lastPathSegment es null para $uri")
+                    return null
+                }
+                val pack = StickerStorage.getPack(context, packId) ?: run {
+                    android.util.Log.e(TAG, "query METADATA_PACK: no se encontró paquete $packId")
+                    return null
+                }
+                android.util.Log.d(TAG, "query METADATA_PACK: devolviendo metadata para ${pack.name} ($packId)")
                 getMetadataCursor(listOf(pack))
             }
             STICKERS -> {
-                val packId = uri.lastPathSegment ?: return null
-                val pack = StickerStorage.getPack(context, packId) ?: return null
+                val packId = uri.lastPathSegment ?: run {
+                    android.util.Log.e(TAG, "query STICKERS: lastPathSegment es null para $uri")
+                    return null
+                }
+                val pack = StickerStorage.getPack(context, packId) ?: run {
+                    android.util.Log.e(TAG, "query STICKERS: no se encontró paquete $packId")
+                    return null
+                }
+                android.util.Log.d(TAG, "query STICKERS: devolviendo ${pack.stickers.size} stickers para ${pack.name} ($packId)")
                 getStickersCursor(pack)
             }
-            else -> throw IllegalArgumentException("Unknown URI: $uri")
+            else -> {
+                android.util.Log.e(TAG, "query desconocido: $uri")
+                throw IllegalArgumentException("Unknown URI: $uri")
+            }
         }
     }
 
@@ -125,21 +151,25 @@ class StickerContentProvider : ContentProvider() {
     private fun getStickersCursor(pack: StickerPack): Cursor {
         val cursor = MatrixCursor(arrayOf(STICKER_FILE_NAME, STICKER_FILE_EMOJI))
         for (sticker in pack.stickers) {
-            val emojiListString = sticker.emojis.joinToString(prefix = "[\"", separator = "\",\"", postfix = "\"]")
-            cursor.addRow(arrayOf(sticker.imageFileName, emojiListString))
+            val emojiString = if (sticker.emojis.isEmpty()) "" else sticker.emojis.take(3).joinToString(",")
+            cursor.addRow(arrayOf(sticker.imageFileName, emojiString))
         }
         return cursor
     }
 
     @Throws(FileNotFoundException::class)
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+        android.util.Log.d(TAG, "openFile solicitado: uri=$uri, mode=$mode")
         val file = getTargetFile(uri)
+        android.util.Log.d(TAG, "openFile resolvió archivo: ${file.absolutePath}, tamaño=${file.length()} bytes")
         return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 
     @Throws(FileNotFoundException::class)
     override fun openAssetFile(uri: Uri, mode: String): AssetFileDescriptor {
+        android.util.Log.d(TAG, "openAssetFile solicitado: uri=$uri, mode=$mode")
         val file = getTargetFile(uri)
+        android.util.Log.d(TAG, "openAssetFile resolvió archivo: ${file.absolutePath}, tamaño=${file.length()} bytes")
         val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
         return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
     }
