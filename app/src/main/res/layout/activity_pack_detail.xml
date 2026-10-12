@@ -196,24 +196,44 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:background="#E6FFFA"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:padding="12dp"
                 android:visibility="gone"
                 tools:visibility="visible">
 
-                <ProgressBar
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:indeterminate="true" />
-
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:text="Procesando archivos .webp…"
-                    android:textColor="#234E52"
-                    android:textSize="13sp" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ProgressBar
+                        android:id="@+id/progressSpinner"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:indeterminate="true" />
+
+                    <TextView
+                        android:id="@+id/tvProcessingStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:text="Procesando archivos .webp…"
+                        android:textColor="#234E52"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/progressBarImport"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:max="100"
+                    android:progress="0"
+                    app:indicatorColor="@color/accent_whatsapp"
+                    app:trackColor="#B2F5EA" />
 
             </LinearLayout>
 

@@ -71,16 +71,7 @@ object ImageProcessor {
 
             val isExactSquare512 = options.outWidth == STICKER_SIZE && options.outHeight == STICKER_SIZE
 
-            // If already exact 512x512 and file size is <= 100KB, copy directly to preserve exact quality
-            if (isExactSquare512) {
-                val rawBytes = context.contentResolver.openInputStream(sourceUri)?.use { it.readBytes() }
-                if (rawBytes != null && rawBytes.size <= MAX_STICKER_BYTES) {
-                    FileOutputStream(destinationFile).use { it.write(rawBytes) }
-                    return true
-                }
-            }
-
-            // Otherwise, decode, scale to 512x512, and compress
+            // Decode Bitmap (this automatically strips any foreign EXIF metadata like Sticker.ly chunks)
             val inputStream: InputStream? = context.contentResolver.openInputStream(sourceUri)
             val originalBitmap = BitmapFactory.decodeStream(inputStream)
             inputStream?.close()
