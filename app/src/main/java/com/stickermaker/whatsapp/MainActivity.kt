@@ -87,12 +87,12 @@ class MainActivity : AppCompatActivity() {
 
         MaterialAlertDialogBuilder(this)
             .setView(dialogBinding.root)
-            .setPositiveButton(R.string.create) { _, _ ->
+            .setPositiveButton("Crear Paquete") { _, _ ->
                 val name = dialogBinding.etPackName.text?.toString()?.trim().orEmpty()
                 val publisher = dialogBinding.etPublisher.text?.toString()?.trim().orEmpty()
 
                 if (name.isEmpty()) {
-                    Toast.makeText(this, "El nombre del paquete no puede estar vacío", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Por favor, escribe un nombre para el paquete", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
@@ -122,12 +122,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun confirmDeletePack(pack: StickerPack) {
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.delete)
-            .setMessage(R.string.delete_pack_confirm)
+            .setTitle("¿Eliminar este paquete?")
+            .setMessage("Se eliminará '${pack.name}' de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.")
             .setPositiveButton(R.string.delete) { _, _ ->
                 StickerStorage.deletePack(this, pack.identifier)
                 loadPacks()
-                Toast.makeText(this, "Paquete eliminado", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Paquete '${pack.name}' eliminado", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

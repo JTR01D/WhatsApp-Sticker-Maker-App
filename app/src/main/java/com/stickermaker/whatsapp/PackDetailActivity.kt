@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.stickermaker.whatsapp.databinding.ActivityPackDetailBinding
+import com.stickermaker.whatsapp.databinding.DialogImportChoiceBinding
 import com.stickermaker.whatsapp.model.Sticker
 import com.stickermaker.whatsapp.model.StickerPack
 import com.stickermaker.whatsapp.utils.ImageProcessor
@@ -135,13 +136,13 @@ class PackDetailActivity : AppCompatActivity() {
 
     private fun showAddOptionsDialog() {
         val options = arrayOf(
-            "💬 WhatsApp Stickers Oficial (Detectar automáticamente)",
-            "📁 Seleccionar Carpeta del almacenamiento (.webp)",
-            "🖼️ Seleccionar Archivos sueltos (.webp)"
+            "💬 WhatsApp Oficial (Detección Automática)\n   Carga tus stickers recibidos y favoritos al instante",
+            "📁 Seleccionar Carpeta Completa\n   Elige cualquier carpeta de tu teléfono (.webp)",
+            "🖼️ Elegir Archivos Individuales\n   Selecciona uno o más archivos .webp sueltos"
         )
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Importar Stickers .webp")
+            .setTitle("¿Cómo deseas importar tus stickers?")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> checkAndImportWhatsAppStickersFolder()
@@ -157,9 +158,9 @@ class PackDetailActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 MaterialAlertDialogBuilder(this)
-                    .setTitle("Acceso a Archivos")
-                    .setMessage("Para leer directamente los stickers de WhatsApp sin las restricciones de Android, activa la opción 'Permitir administración de todos los archivos' en la siguiente pantalla.")
-                    .setPositiveButton("Configurar Permiso") { _, _ ->
+                    .setTitle("Acceso a Stickers de WhatsApp")
+                    .setMessage("Para leer directamente los stickers que recibes y guardas en WhatsApp, Android requiere conceder el permiso de acceso a archivos.\n\nToca en 'Conceder Permiso' y habilita el interruptor para esta app.")
+                    .setPositiveButton("Conceder Permiso") { _, _ ->
                         try {
                             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
                                 data = Uri.parse("package:$packageName")
@@ -170,7 +171,7 @@ class PackDetailActivity : AppCompatActivity() {
                             startActivity(intent)
                         }
                     }
-                    .setNegativeButton(R.string.cancel, null)
+                    .setNegativeButton("Ahora no", null)
                     .show()
                 return
             }
@@ -422,23 +423,45 @@ class PackDetailActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 binding.layoutProcessing.visibility = View.GONE
                 suspendCancellableCoroutine { continuation ->
-                    val options = arrayOf(
-                        "🎬 Solo stickers animados (${animatedUris.size})\n   Importar únicamente los que tienen movimiento",
-                        "🖼️ Solo stickers estáticos (${staticUris.size})\n   Importar únicamente las imágenes fijas",
-                        "✨ Importar ambos (${animatedUris.size + staticUris.size} en total)\n   Separar en paquetes de estáticos y animados"
-                    )
-                    MaterialAlertDialogBuilder(this@PackDetailActivity)
-                        .setTitle("¿Cuáles stickers deseas importar?")
-                        .setItems(options) { _, which ->
-                            continuation.resume(which)
-                        }
-                        .setNegativeButton(R.string.cancel) { _, _ ->
-                            continuation.resume(-1)
-                        }
+                    val dialogBinding = DialogImportChoiceBinding.inflate(layoutInflater)
+                    val totalFound = animatedUris.size + staticUris.size
+
+                    dialogBinding.tvScanSubtitle.text = "$totalFound stickers encontrados en total"
+                    dialogBinding.tvAnimatedCountBadge.text = "• 🎬 ${animatedUris.size} con movimiento (animados)"
+                    dialogBinding.tvStaticCountBadge.text = "• 🖼️ ${staticUris.size} imágenes fijas (estáticas)"
+                    dialogBinding.tvTitleAnimated.text = "Solo con Movimiento (${animatedUris.size})"
+                    dialogBinding.tvTitleStatic.text = "Solo Estáticos (${staticUris.size})"
+                    dialogBinding.tvTitleBoth.text = "Importar Todos ($totalFound)"
+
+                    val dialog = MaterialAlertDialogBuilder(this@PackDetailActivity)
+                        .setView(dialogBinding.root)
+                        .setCancelable(true)
                         .setOnCancelListener {
-                            continuation.resume(-1)
+                            if (continuation.isActive) continuation.resume(-1)
                         }
-                        .show()
+                        .create()
+
+                    dialogBinding.cardChoiceAnimated.setOnClickListener {
+                        dialog.dismiss()
+                        if (continuation.isActive) continuation.resume(0)
+                    }
+
+                    dialogBinding.cardChoiceStatic.setOnClickListener {
+                        dialog.dismiss()
+                        if (continuation.isActive) continuation.resume(1)
+                    }
+
+                    dialogBinding.cardChoiceBoth.setOnClickListener {
+                        dialog.dismiss()
+                        if (continuation.isActive) continuation.resume(2)
+                    }
+
+                    dialogBinding.btnCancelChoice.setOnClickListener {
+                        dialog.dismiss()
+                        if (continuation.isActive) continuation.resume(-1)
+                    }
+
+                    dialog.show()
                 }
             }
         } else if (animatedUris.isNotEmpty()) {
@@ -627,33 +650,34 @@ class PackDetailActivity : AppCompatActivity() {
             loadPackData()
 
             val details = buildString {
-                append("Resultados de la importación:\n")
-                if (addedAnimated > 0) append("• 🎬 $addedAnimated stickers con movimiento (animados)\n")
-                if (addedStatic > 0) append("• 🖼️ $addedStatic stickers estáticos\n")
+                append("¡Stickers importados con éxito!\n\n")
+                if (addedAnimated > 0) append("• 🎬 $addedAnimated con movimiento (animados)\n")
+                if (addedStatic > 0) append("• 🖼️ $addedStatic estáticos\n")
                 if (invalidCount > 0) append("• ⚠️ $invalidCount archivos omitidos (no eran .webp)\n")
                 if (createdExtraPacks > 0) {
-                    append("\nSe organizaron en $createdExtraPacks paquete(s) adicional(es) respetando los límites de 3 a 30 stickers por paquete para WhatsApp.")
+                    append("\n📦 Se crearon $createdExtraPacks paquete(s) adicional(es) para cumplir con el límite de WhatsApp (máximo 30 stickers por paquete).")
                 }
             }
 
             MaterialAlertDialogBuilder(this@PackDetailActivity)
                 .setTitle("¡Importación Completada!")
                 .setMessage(details)
-                .setPositiveButton("Excelente", null)
+                .setPositiveButton("Entendido", null)
                 .show()
         }
     }
 
     private fun setControlsEnabled(enabled: Boolean) {
         binding.fabAddStickers.isEnabled = enabled
+        binding.btnImportWhatsApp.isEnabled = enabled
         binding.btnImportFolder.isEnabled = enabled
         binding.btnImportFiles.isEnabled = enabled
     }
 
     private fun confirmDeleteSticker(sticker: Sticker) {
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.delete)
-            .setMessage(R.string.delete_sticker_confirm)
+            .setTitle("¿Eliminar este sticker?")
+            .setMessage("¿Deseas quitar este sticker del paquete actual?")
             .setPositiveButton(R.string.delete) { _, _ ->
                 StickerStorage.removeStickerFromPack(this, packId, sticker.imageFileName)
                 loadPackData()
