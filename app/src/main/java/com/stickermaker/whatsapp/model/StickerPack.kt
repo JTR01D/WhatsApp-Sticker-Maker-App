@@ -24,7 +24,7 @@ data class StickerPack(
     @SerializedName("avoid_cache")
     val avoidCache: Boolean = false,
     @SerializedName("animated_sticker_pack")
-    val animatedStickerPack: Boolean = false,
+    var animatedStickerPack: Boolean = false,
     @SerializedName("stickers")
     val stickers: MutableList<Sticker> = mutableListOf()
 ) {

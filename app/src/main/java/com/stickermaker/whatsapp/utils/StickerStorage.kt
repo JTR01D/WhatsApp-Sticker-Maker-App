@@ -84,16 +84,28 @@ object StickerStorage {
     }
 
     /**
-     * Imports an image Uri into the specified pack, converting it into a 512x512 WebP sticker.
+     * Imports an image Uri into the specified pack, preserving animated WebP or formatting static WebP.
      */
     fun addStickerToPack(context: Context, packId: String, imageUri: Uri): Boolean {
         val pack = getPack(context, packId) ?: return false
         if (pack.stickers.size >= 30) return false // WhatsApp max limit
 
+        val isAnimated = ImageProcessor.isAnimatedWebP(context, imageUri)
+
+        // WhatsApp strict rule: a pack cannot mix static and animated stickers.
+        // If pack is brand new (0 stickers), adopt the sticker's type.
+        if (pack.stickers.isEmpty()) {
+            pack.animatedStickerPack = isAnimated
+        } else {
+            if (pack.animatedStickerPack != isAnimated) {
+                return false // Type mismatch
+            }
+        }
+
         val stickerFileName = "sticker_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(6)}.webp"
         val destinationFile = getStickerFile(context, packId, stickerFileName)
 
-        val success = ImageProcessor.processStickerImage(context, imageUri, destinationFile)
+        val success = ImageProcessor.processStickerImage(context, imageUri, destinationFile, isAnimated)
         if (!success) return false
 
         // If pack doesn't have a tray icon yet, create one from this first sticker

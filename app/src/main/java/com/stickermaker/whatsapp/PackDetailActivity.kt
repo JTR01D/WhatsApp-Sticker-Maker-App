@@ -148,8 +148,8 @@ class PackDetailActivity : AppCompatActivity() {
         currentPack = pack
 
         binding.tvDetailPackName.text = pack.name
-        binding.tvDetailPublisher.text = "Por ${pack.publisher}"
-        binding.tvDetailCount.text = "${pack.stickers.size} / 30"
+        val typeBadge = if (pack.animatedStickerPack) " • 🎬 Animado" else if (pack.stickers.isNotEmpty()) " • 🖼️ Estático" else ""
+        binding.tvDetailCount.text = "${pack.stickers.size} / 30$typeBadge"
 
         // Tray icon
         if (pack.trayImageFile.isNotEmpty()) {
@@ -220,7 +220,7 @@ class PackDetailActivity : AppCompatActivity() {
 
     /**
      * Scans selected folder and imports ALL .webp files smoothly without freezing the device.
-     * Automatically splits stickers into multiple packs if total count exceeds 30.
+     * Separates animated and static stickers into WhatsApp-compliant packs (3..30 stickers each).
      */
     private fun importWebpFromFolder(treeUri: Uri) {
         binding.layoutProcessing.visibility = View.VISIBLE
@@ -252,97 +252,12 @@ class PackDetailActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val pack = StickerStorage.getPack(this@PackDetailActivity, packId) ?: return@launch
-            val availableSlots = (30 - pack.stickers.size).coerceAtLeast(0)
-            val totalWebpCount = webpUris.size
-
-            val currentPackUris = if (availableSlots > 0) webpUris.take(availableSlots) else emptyList()
-            val leftoverUris = if (availableSlots > 0 && totalWebpCount > availableSlots) {
-                webpUris.drop(availableSlots)
-            } else if (availableSlots == 0) {
-                webpUris
-            } else {
-                emptyList()
-            }
-
-            val extraChunks = partitionIntoValidPacks(leftoverUris)
-            var processedCount = 0
-            var successfulCount = 0
-
-            // 1. Fill current pack
-            if (currentPackUris.isNotEmpty()) {
-                for (uri in currentPackUris) {
-                    val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, packId, uri)
-                    if (ok) successfulCount++
-                    processedCount++
-                    val progressPercent = (processedCount * 100) / totalWebpCount
-                    withContext(Dispatchers.Main) {
-                        binding.progressBarImport.progress = progressPercent
-                        binding.tvProcessingStatus.text = "Importando $processedCount de $totalWebpCount stickers..."
-                    }
-                    yield()
-                }
-            }
-
-            // 2. Create extra packs for overflow stickers
-            val baseName = pack.name.replace(Regex(" \\(Parte \\d+\\)$"), "")
-            var partIndex = 2
-            val existingPacks = StickerStorage.getAllPacks(this@PackDetailActivity)
-            while (existingPacks.any { it.name == "$baseName (Parte $partIndex)" }) {
-                partIndex++
-            }
-
-            for (chunk in extraChunks) {
-                val newIdentifier = UUID.randomUUID().toString()
-                val newPackName = "$baseName (Parte $partIndex)"
-                partIndex++
-
-                val newPack = StickerPack(
-                    identifier = newIdentifier,
-                    name = newPackName,
-                    publisher = pack.publisher,
-                    trayImageFile = ""
-                )
-                StickerStorage.savePack(this@PackDetailActivity, newPack)
-
-                for (uri in chunk) {
-                    val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newIdentifier, uri)
-                    if (ok) successfulCount++
-                    processedCount++
-                    val progressPercent = (processedCount * 100) / totalWebpCount
-                    withContext(Dispatchers.Main) {
-                        binding.progressBarImport.progress = progressPercent
-                        binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalWebpCount..."
-                    }
-                    yield()
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                binding.layoutProcessing.visibility = View.GONE
-                setControlsEnabled(true)
-                loadPackData()
-
-                if (extraChunks.isNotEmpty()) {
-                    MaterialAlertDialogBuilder(this@PackDetailActivity)
-                        .setTitle("¡Importación Completada!")
-                        .setMessage("Se importaron $successfulCount stickers .webp exitosamente.\n\nPara respetar el límite de 30 stickers por paquete de WhatsApp, se crearon automáticamente ${extraChunks.size} paquete(s) adicional(es) (Parte 2, Parte 3...). ¡Ningún sticker se perdió!")
-                        .setPositiveButton("Entendido", null)
-                        .show()
-                } else {
-                    Toast.makeText(
-                        this@PackDetailActivity,
-                        "Se importaron $successfulCount stickers .webp exitosamente",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
+            importUrisBatch(webpUris)
         }
     }
 
     /**
-     * Processes individually selected files, strictly checking for .webp format
-     * and automatically splitting into multiple packs if count > 30.
+     * Processes individually selected files, separating static and animated stickers.
      */
     private fun processSelectedImages(uris: List<Uri>) {
         binding.layoutProcessing.visibility = View.VISIBLE
@@ -351,97 +266,217 @@ class PackDetailActivity : AppCompatActivity() {
         setControlsEnabled(false)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val pack = StickerStorage.getPack(this@PackDetailActivity, packId) ?: return@launch
-            val availableSlots = (30 - pack.stickers.size).coerceAtLeast(0)
-            val totalCount = uris.size
+            importUrisBatch(uris)
+        }
+    }
 
-            val currentPackUris = if (availableSlots > 0) uris.take(availableSlots) else emptyList()
-            val leftoverUris = if (availableSlots > 0 && totalCount > availableSlots) {
-                uris.drop(availableSlots)
-            } else if (availableSlots == 0) {
-                uris
-            } else {
-                emptyList()
+    private suspend fun importUrisBatch(allUris: List<Uri>) {
+        val validUris = allUris.filter { ImageProcessor.isStrictlyWebP(this@PackDetailActivity, it) }
+        val invalidCount = allUris.size - validUris.size
+
+        if (validUris.isEmpty()) {
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                setControlsEnabled(true)
+                Toast.makeText(
+                    this@PackDetailActivity,
+                    "No se encontraron stickers .webp válidos",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+            return
+        }
 
-            val extraChunks = partitionIntoValidPacks(leftoverUris)
-            var processedCount = 0
-            var addedCount = 0
-            var excludedCount = 0
+        val totalCount = validUris.size
+        val staticUris = mutableListOf<Uri>()
+        val animatedUris = mutableListOf<Uri>()
 
-            // 1. Fill current pack
-            for (uri in currentPackUris) {
-                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, packId, uri)
-                if (ok) addedCount++ else excludedCount++
+        withContext(Dispatchers.Main) {
+            binding.tvProcessingStatus.text = "Clasificando $totalCount stickers (estáticos y con movimiento)..."
+            binding.progressBarImport.progress = 0
+        }
+
+        for ((index, uri) in validUris.withIndex()) {
+            if (ImageProcessor.isAnimatedWebP(this@PackDetailActivity, uri)) {
+                animatedUris.add(uri)
+            } else {
+                staticUris.add(uri)
+            }
+            if (index % 20 == 0) {
+                val percent = (index * 100) / totalCount
+                withContext(Dispatchers.Main) {
+                    binding.progressBarImport.progress = percent
+                }
+                yield()
+            }
+        }
+
+        val current = StickerStorage.getPack(this@PackDetailActivity, packId) ?: return
+        val baseName = current.name
+            .replace(Regex(" \\(Parte \\d+\\)$"), "")
+            .replace(Regex(" - Animados.*$"), "")
+            .replace(Regex(" - Estáticos.*$"), "")
+            .trim()
+        val publisher = current.publisher
+
+        var processedCount = 0
+        var addedStatic = 0
+        var addedAnimated = 0
+        var createdExtraPacks = 0
+
+        // Helper to find unique pack name
+        fun getUniquePackName(pattern: String): String {
+            val existing = StickerStorage.getAllPacks(this@PackDetailActivity)
+            var idx = 1
+            var candidate = pattern.replace("{idx}", idx.toString())
+            while (existing.any { it.name.equals(candidate, ignoreCase = true) }) {
+                idx++
+                candidate = pattern.replace("{idx}", idx.toString())
+            }
+            return candidate
+        }
+
+        // Determine destination for static and animated lists
+        val fillCurrentWithStatic: Boolean
+        val fillCurrentWithAnimated: Boolean
+
+        if (current.stickers.isEmpty()) {
+            if (staticUris.isNotEmpty()) {
+                fillCurrentWithStatic = true
+                fillCurrentWithAnimated = false
+            } else {
+                fillCurrentWithStatic = false
+                fillCurrentWithAnimated = true
+            }
+        } else {
+            if (current.animatedStickerPack) {
+                fillCurrentWithStatic = false
+                fillCurrentWithAnimated = true
+            } else {
+                fillCurrentWithStatic = true
+                fillCurrentWithAnimated = false
+            }
+        }
+
+        val availableSlots = (30 - current.stickers.size).coerceAtLeast(0)
+
+        // 1. Handle Static stickers
+        val staticForCurrent = if (fillCurrentWithStatic && availableSlots > 0) {
+            staticUris.take(availableSlots)
+        } else emptyList()
+
+        val staticForExtra = if (fillCurrentWithStatic) {
+            staticUris.drop(staticForCurrent.size)
+        } else staticUris
+
+        for (uri in staticForCurrent) {
+            val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
+            if (ok) addedStatic++
+            processedCount++
+            val percent = (processedCount * 100) / totalCount
+            withContext(Dispatchers.Main) {
+                binding.progressBarImport.progress = percent
+                binding.tvProcessingStatus.text = "Importando estáticos: $processedCount de $totalCount..."
+            }
+            yield()
+        }
+
+        val staticChunks = partitionIntoValidPacks(staticForExtra)
+        for (chunk in staticChunks) {
+            val newPackId = UUID.randomUUID().toString()
+            val newPackName = getUniquePackName("$baseName (Parte {idx})")
+            val newPack = StickerPack(
+                identifier = newPackId,
+                name = newPackName,
+                publisher = publisher,
+                trayImageFile = "",
+                animatedStickerPack = false
+            )
+            StickerStorage.savePack(this@PackDetailActivity, newPack)
+            createdExtraPacks++
+
+            for (uri in chunk) {
+                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newPackId, uri)
+                if (ok) addedStatic++
                 processedCount++
                 val percent = (processedCount * 100) / totalCount
                 withContext(Dispatchers.Main) {
                     binding.progressBarImport.progress = percent
-                    binding.tvProcessingStatus.text = "Importando: $processedCount de $totalCount stickers..."
+                    binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalCount..."
                 }
                 yield()
             }
+        }
 
-            // 2. Extra packs for remainder
-            val baseName = pack.name.replace(Regex(" \\(Parte \\d+\\)$"), "")
-            var partIndex = 2
-            val existingPacks = StickerStorage.getAllPacks(this@PackDetailActivity)
-            while (existingPacks.any { it.name == "$baseName (Parte $partIndex)" }) {
-                partIndex++
-            }
+        // 2. Handle Animated stickers
+        val animatedSlots = if (fillCurrentWithAnimated) (30 - (StickerStorage.getPack(this@PackDetailActivity, packId)?.stickers?.size ?: 0)).coerceAtLeast(0) else 0
+        val animatedForCurrent = if (fillCurrentWithAnimated && animatedSlots > 0) {
+            animatedUris.take(animatedSlots)
+        } else emptyList()
 
-            for (chunk in extraChunks) {
-                val newIdentifier = UUID.randomUUID().toString()
-                val newPackName = "$baseName (Parte $partIndex)"
-                partIndex++
+        val animatedForExtra = if (fillCurrentWithAnimated) {
+            animatedUris.drop(animatedForCurrent.size)
+        } else animatedUris
 
-                val newPack = StickerPack(
-                    identifier = newIdentifier,
-                    name = newPackName,
-                    publisher = pack.publisher,
-                    trayImageFile = ""
-                )
-                StickerStorage.savePack(this@PackDetailActivity, newPack)
-
-                for (uri in chunk) {
-                    val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newIdentifier, uri)
-                    if (ok) addedCount++ else excludedCount++
-                    processedCount++
-                    val percent = (processedCount * 100) / totalCount
-                    withContext(Dispatchers.Main) {
-                        binding.progressBarImport.progress = percent
-                        binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalCount..."
-                    }
-                    yield()
-                }
-            }
-
+        for (uri in animatedForCurrent) {
+            val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
+            if (ok) addedAnimated++
+            processedCount++
+            val percent = (processedCount * 100) / totalCount
             withContext(Dispatchers.Main) {
-                binding.layoutProcessing.visibility = View.GONE
-                setControlsEnabled(true)
-                loadPackData()
+                binding.progressBarImport.progress = percent
+                binding.tvProcessingStatus.text = "Importando animados: $processedCount de $totalCount..."
+            }
+            yield()
+        }
 
-                if (extraChunks.isNotEmpty()) {
-                    MaterialAlertDialogBuilder(this@PackDetailActivity)
-                        .setTitle("¡Importación Completada!")
-                        .setMessage("Se importaron $addedCount stickers .webp ($excludedCount excluidos por no ser .webp).\n\nSe crearon automáticamente ${extraChunks.size} paquete(s) adicional(es) para respetar el límite de 30 de WhatsApp.")
-                        .setPositiveButton("Entendido", null)
-                        .show()
-                } else if (addedCount > 0) {
-                    val msg = if (excludedCount > 0) {
-                        "Se agregaron $addedCount stickers .webp ($excludedCount archivos no .webp excluidos)"
-                    } else {
-                        "Se agregaron $addedCount stickers .webp"
-                    }
-                    Toast.makeText(this@PackDetailActivity, msg, Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(
-                        this@PackDetailActivity,
-                        "Solo se admiten archivos .webp. El resto de formatos fue excluido.",
-                        Toast.LENGTH_LONG
-                    ).show()
+        val animatedChunks = partitionIntoValidPacks(animatedForExtra)
+        for (chunk in animatedChunks) {
+            val newPackId = UUID.randomUUID().toString()
+            val newPackName = getUniquePackName("$baseName - Animados (Parte {idx})")
+            val newPack = StickerPack(
+                identifier = newPackId,
+                name = newPackName,
+                publisher = publisher,
+                trayImageFile = "",
+                animatedStickerPack = true
+            )
+            StickerStorage.savePack(this@PackDetailActivity, newPack)
+            createdExtraPacks++
+
+            for (uri in chunk) {
+                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, newPackId, uri)
+                if (ok) addedAnimated++
+                processedCount++
+                val percent = (processedCount * 100) / totalCount
+                withContext(Dispatchers.Main) {
+                    binding.progressBarImport.progress = percent
+                    binding.tvProcessingStatus.text = "Importando en '$newPackName': $processedCount de $totalCount..."
+                }
+                yield()
+            }
+        }
+
+        withContext(Dispatchers.Main) {
+            binding.layoutProcessing.visibility = View.GONE
+            setControlsEnabled(true)
+            loadPackData()
+
+            val details = buildString {
+                append("Resultados de la importación:\n")
+                if (addedStatic > 0) append("• $addedStatic stickers estáticos\n")
+                if (addedAnimated > 0) append("• $addedAnimated stickers con movimiento (animados)\n")
+                if (invalidCount > 0) append("• $invalidCount archivos omitidos (no eran .webp)\n")
+                if (createdExtraPacks > 0) {
+                    append("\nSe crearon $createdExtraPacks paquete(s) adicional(es) respetando los límites de 3 a 30 stickers y separando los animados de los estáticos como exige WhatsApp.")
                 }
             }
+
+            MaterialAlertDialogBuilder(this@PackDetailActivity)
+                .setTitle("¡Importación Completada!")
+                .setMessage(details)
+                .setPositiveButton("Excelente", null)
+                .show()
         }
     }
 

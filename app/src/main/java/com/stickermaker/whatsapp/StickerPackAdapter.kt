@@ -23,8 +23,8 @@ class StickerPackAdapter(
 
         fun bind(pack: StickerPack) {
             binding.tvPackName.text = pack.name
-            binding.tvPublisher.text = "Por ${pack.publisher}"
-            binding.tvStickerCount.text = "${pack.stickers.size} / 30 stickers"
+            val typeBadge = if (pack.animatedStickerPack) " • 🎬 Animado" else ""
+            binding.tvStickerCount.text = "${pack.stickers.size} / 30 stickers$typeBadge"
 
             // Tray icon loading
             val context = binding.root.context

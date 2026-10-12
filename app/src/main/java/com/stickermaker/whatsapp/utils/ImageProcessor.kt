@@ -18,7 +18,8 @@ object ImageProcessor {
 
     private const val STICKER_SIZE = 512
     private const val STICKER_SAFE_MARGIN = 16
-    private const val MAX_STICKER_BYTES = 100 * 1024 // 100 KB limit for WhatsApp
+    private const val MAX_STATIC_STICKER_BYTES = 100 * 1024 // 100 KB limit for WhatsApp static stickers
+    private const val MAX_ANIMATED_STICKER_BYTES = 500 * 1024 // 500 KB limit for WhatsApp animated stickers
 
     private const val TRAY_SIZE = 96
     private const val MAX_TRAY_BYTES = 50 * 1024 // 50 KB limit for tray icon
@@ -50,49 +51,120 @@ object ImageProcessor {
     }
 
     /**
-     * Strictly processes a WebP image. Excludes any other format.
-     * If already 512x512 and <100KB, copies it directly.
-     * Otherwise, centers and adjusts to 512x512 WebP (<100KB).
+     * Checks if a Uri points to an animated WebP file by checking for the animation flag in VP8X
+     * or the presence of the ANIM chunk in the header.
      */
-    fun processStickerImage(context: Context, sourceUri: Uri, destinationFile: File): Boolean {
+    fun isAnimatedWebP(context: Context, sourceUri: Uri): Boolean {
+        return try {
+            context.contentResolver.openInputStream(sourceUri)?.use { stream ->
+                val header = ByteArray(4096)
+                val bytesRead = stream.read(header)
+                if (bytesRead >= 21) {
+                    val isRiff = header[0] == 'R'.code.toByte() &&
+                                 header[1] == 'I'.code.toByte() &&
+                                 header[2] == 'F'.code.toByte() &&
+                                 header[3] == 'F'.code.toByte()
+                    val isWebp = header[8] == 'W'.code.toByte() &&
+                                 header[9] == 'E'.code.toByte() &&
+                                 header[10] == 'B'.code.toByte() &&
+                                 header[11] == 'P'.code.toByte()
+                    if (!isRiff || !isWebp) return false
+
+                    // VP8X chunk header at offset 12..15
+                    val isVp8x = header[12] == 'V'.code.toByte() &&
+                                 header[13] == 'P'.code.toByte() &&
+                                 header[14] == '8'.code.toByte() &&
+                                 header[15] == 'X'.code.toByte()
+                    // Flag byte at offset 20: bit 1 is Animation flag (0x02)
+                    if (isVp8x && (header[20].toInt() and 0x02) != 0) {
+                        return true
+                    }
+
+                    // Also search for "ANIM" FourCC anywhere in the header buffer
+                    for (i in 12 until bytesRead - 3) {
+                        if (header[i] == 'A'.code.toByte() &&
+                            header[i + 1] == 'N'.code.toByte() &&
+                            header[i + 2] == 'I'.code.toByte() &&
+                            header[i + 3] == 'M'.code.toByte()) {
+                            return true
+                        }
+                    }
+                }
+                false
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Strictly processes a WebP sticker image.
+     * If isAnimated is true: preserves raw animated WebP data (all frames & timing) under 500KB.
+     * If isAnimated is false: centers and adjusts static image to 512x512 WebP under 100KB.
+     */
+    fun processStickerImage(
+        context: Context,
+        sourceUri: Uri,
+        destinationFile: File,
+        isAnimated: Boolean = false
+    ): Boolean {
         // Enforce strict WebP format check
         if (!isStrictlyWebP(context, sourceUri)) {
             return false
         }
 
         return try {
-            // Check original dimensions and size
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            context.contentResolver.openInputStream(sourceUri)?.use {
-                BitmapFactory.decodeStream(it, null, options)
-            }
+            if (isAnimated) {
+                // Must be an animated WebP
+                if (!isAnimatedWebP(context, sourceUri)) {
+                    return false
+                }
 
-            val isExactSquare512 = options.outWidth == STICKER_SIZE && options.outHeight == STICKER_SIZE
+                // Copy raw bytes to retain all animation frames and timing perfectly
+                val bytes = context.contentResolver.openInputStream(sourceUri)?.use { it.readBytes() }
+                    ?: return false
 
-            // Decode Bitmap (this automatically strips any foreign EXIF metadata like Sticker.ly chunks)
-            val inputStream: InputStream? = context.contentResolver.openInputStream(sourceUri)
-            val originalBitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
+                // WhatsApp strict limit for animated stickers is 500 KB
+                if (bytes.size > MAX_ANIMATED_STICKER_BYTES) {
+                    return false
+                }
 
-            if (originalBitmap == null) return false
-
-            val scaledBitmap = fitAndCenterOnCanvas(
-                originalBitmap,
-                targetSize = STICKER_SIZE,
-                margin = if (isExactSquare512) 0 else STICKER_SAFE_MARGIN
-            )
-
-            val compressedBytes = compressToWebP(scaledBitmap, MAX_STICKER_BYTES)
-            scaledBitmap.recycle()
-            originalBitmap.recycle()
-
-            if (compressedBytes != null) {
-                FileOutputStream(destinationFile).use { it.write(compressedBytes) }
+                FileOutputStream(destinationFile).use { it.write(bytes) }
                 true
             } else {
-                false
+                // Check original dimensions and size
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                context.contentResolver.openInputStream(sourceUri)?.use {
+                    BitmapFactory.decodeStream(it, null, options)
+                }
+
+                val isExactSquare512 = options.outWidth == STICKER_SIZE && options.outHeight == STICKER_SIZE
+
+                // Decode Bitmap
+                val inputStream: InputStream? = context.contentResolver.openInputStream(sourceUri)
+                val originalBitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (originalBitmap == null) return false
+
+                val scaledBitmap = fitAndCenterOnCanvas(
+                    originalBitmap,
+                    targetSize = STICKER_SIZE,
+                    margin = if (isExactSquare512) 0 else STICKER_SAFE_MARGIN
+                )
+
+                val compressedBytes = compressToWebP(scaledBitmap, MAX_STATIC_STICKER_BYTES)
+                scaledBitmap.recycle()
+                originalBitmap.recycle()
+
+                if (compressedBytes != null) {
+                    FileOutputStream(destinationFile).use { it.write(compressedBytes) }
+                    true
+                } else {
+                    false
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -102,6 +174,7 @@ object ImageProcessor {
 
     /**
      * Generates a 96x96 tray icon in WebP format (<50KB).
+     * Works for both static and animated WebP (BitmapFactory decodes frame 0 of animated WebP).
      */
     fun generateTrayIcon(context: Context, sourceUri: Uri, destinationFile: File): Boolean {
         return try {
