@@ -542,4 +542,58 @@ object StickerStorage {
         }
         return removed
     }
+
+    /**
+     * Scans all stored sticker packs and ensures every sticker and pack strictly satisfies WhatsApp rules:
+     * 1. Animated stickers have exact 512x512 canvas, centered frames, and stripped metadata.
+     * 2. Every sticker has at least 1 emoji (defaults to 😀).
+     * 3. Tray icons exist, are 96x96, and valid.
+     */
+    @Synchronized
+    fun sanitizeAndNormalizePacks(context: Context) {
+        val packs = getAllPacks(context)
+        var packsModified = false
+        for (pack in packs) {
+            var packModified = false
+            for (sticker in pack.stickers) {
+                val file = getStickerFile(context, pack.identifier, sticker.imageFileName)
+                if (file.exists() && pack.animatedStickerPack) {
+                    try {
+                        val bytes = file.readBytes()
+                        val normalized = ImageProcessor.normalizeAnimatedWebP(bytes)
+                        if (normalized.size != bytes.size || !bytes.contentEquals(normalized)) {
+                            file.writeBytes(normalized)
+                            packModified = true
+                            android.util.Log.d("StickerStorage", "Normalizado sticker animado a 512x512: ${file.name} (${normalized.size} bytes)")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("StickerStorage", "Error normalizando sticker ${file.name}: ${e.message}")
+                    }
+                }
+                if (sticker.emojis.isEmpty()) {
+                    sticker.emojis = listOf("😀")
+                    packModified = true
+                }
+            }
+            // Ensure tray icon exists and is valid
+            if (pack.trayImageFile.isEmpty() && pack.stickers.isNotEmpty()) {
+                val firstSticker = pack.stickers.first()
+                val firstFile = getStickerFile(context, pack.identifier, firstSticker.imageFileName)
+                if (firstFile.exists()) {
+                    val trayName = "tray_${pack.identifier}.webp"
+                    val trayFile = getStickerFile(context, pack.identifier, trayName)
+                    if (ImageProcessor.generateTrayIcon(context, Uri.fromFile(firstFile), trayFile)) {
+                        pack.trayImageFile = trayName
+                        packModified = true
+                    }
+                }
+            }
+            if (packModified) {
+                packsModified = true
+            }
+        }
+        if (packsModified) {
+            savePacks(context, packs)
+        }
+    }
 }

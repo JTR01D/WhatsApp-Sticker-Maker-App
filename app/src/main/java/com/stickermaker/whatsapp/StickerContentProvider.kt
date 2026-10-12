@@ -43,6 +43,7 @@ class StickerContentProvider : ContentProvider() {
         // Official WhatsApp Sticker columns
         private const val STICKER_FILE_NAME = "sticker_file_name"
         private const val STICKER_FILE_EMOJI = "sticker_emoji"
+        private const val STICKER_FILE_ACCESSIBILITY_TEXT = "sticker_accessibility_text"
     }
 
     private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH)
@@ -76,7 +77,7 @@ class StickerContentProvider : ContentProvider() {
             METADATA -> {
                 val packs = StickerStorage.getAllPacks(context).filter { it.isReadyForWhatsApp }
                 android.util.Log.d(TAG, "query METADATA: devolviendo ${packs.size} paquetes listos")
-                getMetadataCursor(packs)
+                getMetadataCursor(packs, uri)
             }
             METADATA_PACK -> {
                 val packId = uri.lastPathSegment ?: run {
@@ -88,7 +89,7 @@ class StickerContentProvider : ContentProvider() {
                     return null
                 }
                 android.util.Log.d(TAG, "query METADATA_PACK: devolviendo metadata para ${pack.name} ($packId)")
-                getMetadataCursor(listOf(pack))
+                getMetadataCursor(listOf(pack), uri)
             }
             STICKERS -> {
                 val packId = uri.lastPathSegment ?: run {
@@ -100,7 +101,7 @@ class StickerContentProvider : ContentProvider() {
                     return null
                 }
                 android.util.Log.d(TAG, "query STICKERS: devolviendo ${pack.stickers.size} stickers para ${pack.name} ($packId)")
-                getStickersCursor(pack)
+                getStickersCursor(pack, uri)
             }
             else -> {
                 android.util.Log.e(TAG, "query desconocido: $uri")
@@ -109,7 +110,7 @@ class StickerContentProvider : ContentProvider() {
         }
     }
 
-    private fun getMetadataCursor(packs: List<StickerPack>): Cursor {
+    private fun getMetadataCursor(packs: List<StickerPack>, uri: Uri): Cursor {
         val columns = arrayOf(
             STICKER_PACK_IDENTIFIER,
             STICKER_PACK_NAME,
@@ -145,15 +146,17 @@ class StickerContentProvider : ContentProvider() {
                 )
             )
         }
+        context?.contentResolver?.let { cursor.setNotificationUri(it, uri) }
         return cursor
     }
 
-    private fun getStickersCursor(pack: StickerPack): Cursor {
-        val cursor = MatrixCursor(arrayOf(STICKER_FILE_NAME, STICKER_FILE_EMOJI))
+    private fun getStickersCursor(pack: StickerPack, uri: Uri): Cursor {
+        val cursor = MatrixCursor(arrayOf(STICKER_FILE_NAME, STICKER_FILE_EMOJI, STICKER_FILE_ACCESSIBILITY_TEXT))
         for (sticker in pack.stickers) {
-            val emojiString = if (sticker.emojis.isEmpty()) "" else sticker.emojis.take(3).joinToString(",")
-            cursor.addRow(arrayOf(sticker.imageFileName, emojiString))
+            val emojiString = if (sticker.emojis.isEmpty()) "😀" else sticker.emojis.take(3).joinToString(",")
+            cursor.addRow(arrayOf(sticker.imageFileName, emojiString, ""))
         }
+        context?.contentResolver?.let { cursor.setNotificationUri(it, uri) }
         return cursor
     }
 
@@ -171,7 +174,7 @@ class StickerContentProvider : ContentProvider() {
         val file = getTargetFile(uri)
         android.util.Log.d(TAG, "openAssetFile resolvió archivo: ${file.absolutePath}, tamaño=${file.length()} bytes")
         val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-        return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
+        return AssetFileDescriptor(pfd, 0, file.length())
     }
 
     private fun getTargetFile(uri: Uri): File {

@@ -359,26 +359,31 @@ class MainActivity : AppCompatActivity() {
     private fun startSequentialAddToWhatsApp(packsToAdd: List<StickerPack>) {
         if (packsToAdd.isEmpty()) return
 
-        if (packsToAdd.size == 1) {
-            sequentialAddQueue.clear()
-            totalSequentialCount = 1
-            currentSequentialIndex = 0
-            WhatsAppChecker.addPackToWhatsApp(this, packsToAdd.first(), ADD_PACK_REQUEST_CODE)
-            return
-        }
+        lifecycleScope.launch(Dispatchers.IO) {
+            StickerStorage.sanitizeAndNormalizePacks(this@MainActivity)
+            withContext(Dispatchers.Main) {
+                if (packsToAdd.size == 1) {
+                    sequentialAddQueue.clear()
+                    totalSequentialCount = 1
+                    currentSequentialIndex = 0
+                    WhatsAppChecker.addPackToWhatsApp(this@MainActivity, packsToAdd.first(), ADD_PACK_REQUEST_CODE)
+                    return@withContext
+                }
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle("📲 Añadir ${packsToAdd.size} Paquetes a WhatsApp")
-            .setMessage("Por seguridad, WhatsApp te pedirá confirmar cada paquete con un toque en su pantalla.\n\nLa app te abrirá automáticamente un paquete tras otro de forma continua.\n\n¿Deseas comenzar ahora?")
-            .setPositiveButton("Comenzar") { _, _ ->
-                sequentialAddQueue.clear()
-                sequentialAddQueue.addAll(packsToAdd)
-                totalSequentialCount = packsToAdd.size
-                currentSequentialIndex = 0
-                launchNextInWhatsAppQueue()
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("📲 Añadir ${packsToAdd.size} Paquetes a WhatsApp")
+                    .setMessage("Por seguridad, WhatsApp te pedirá confirmar cada paquete con un toque en su pantalla.\n\nLa app te abrirá automáticamente un paquete tras otro de forma continua.\n\n¿Deseas comenzar ahora?")
+                    .setPositiveButton("Comenzar") { _, _ ->
+                        sequentialAddQueue.clear()
+                        sequentialAddQueue.addAll(packsToAdd)
+                        totalSequentialCount = packsToAdd.size
+                        currentSequentialIndex = 0
+                        launchNextInWhatsAppQueue()
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
             }
-            .setNegativeButton("Cancelar", null)
-            .show()
+        }
     }
 
     private fun launchNextInWhatsAppQueue() {
@@ -448,7 +453,11 @@ class MainActivity : AppCompatActivity() {
                         .show()
                 } else {
                     if (!error.isNullOrEmpty()) {
-                        Toast.makeText(this, "WhatsApp error: $error", Toast.LENGTH_LONG).show()
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle("WhatsApp reportó un problema")
+                            .setMessage("WhatsApp no pudo procesar el paquete:\n\n$error")
+                            .setPositiveButton("Aceptar", null)
+                            .show()
                     }
                 }
             }

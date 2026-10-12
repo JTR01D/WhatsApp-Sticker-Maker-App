@@ -294,16 +294,18 @@ object ImageProcessor {
                     return false
                 }
 
-                // Copy raw bytes to retain all animation frames and timing perfectly
                 val bytes = openStream(context, sourceUri)?.use { it.readBytes() }
                     ?: return false
 
-                // WhatsApp strict limit for animated stickers is 500 KB
-                if (bytes.size > MAX_ANIMATED_STICKER_BYTES) {
+                // Normalize animated WebP to exactly 512x512 canvas, center frames, and strip EXIF
+                val normalizedBytes = normalizeAnimatedWebP(bytes)
+
+                // WhatsApp strict limit for animated stickers is 500 KB (500,000 bytes)
+                if (normalizedBytes.size > MAX_ANIMATED_STICKER_BYTES) {
                     return false
                 }
 
-                FileOutputStream(destinationFile).use { it.write(bytes) }
+                FileOutputStream(destinationFile).use { it.write(normalizedBytes) }
                 true
             } else {
                 // Check original dimensions and size
@@ -421,5 +423,158 @@ object ImageProcessor {
         } while (bytes.size > maxByteLimit && quality >= 20)
 
         return if (bytes.size <= maxByteLimit) bytes else null
+    }
+
+    /**
+     * Normalizes an animated WebP file to strictly conform to WhatsApp third-party requirements:
+     * - Forces canvas to exactly 512x512 pixels in VP8X chunk.
+     * - Centers animation frames (ANMF) within the 512x512 canvas.
+     * - Strips extraneous metadata chunks (EXIF, XMP, ICCP) that can cause WhatsApp validation errors.
+     * - Ensures file size strictly stays <= 500 KB (500,000 bytes) by safely dropping frames if needed.
+     */
+    fun normalizeAnimatedWebP(bytes: ByteArray): ByteArray {
+        if (bytes.size < 30) return bytes
+
+        // Verify RIFF and WEBP
+        if (bytes[0] != 'R'.code.toByte() || bytes[1] != 'I'.code.toByte() ||
+            bytes[2] != 'F'.code.toByte() || bytes[3] != 'F'.code.toByte() ||
+            bytes[8] != 'W'.code.toByte() || bytes[9] != 'E'.code.toByte() ||
+            bytes[10] != 'B'.code.toByte() || bytes[11] != 'P'.code.toByte()
+        ) {
+            return bytes
+        }
+
+        // First chunk must be VP8X
+        val chunk1 = String(bytes, 12, 4, Charsets.US_ASCII)
+        if (chunk1 != "VP8X") return bytes
+
+        val curWidthMinus1 = (bytes[24].toInt() and 0xFF) or
+                ((bytes[25].toInt() and 0xFF) shl 8) or
+                ((bytes[26].toInt() and 0xFF) shl 16)
+        val curHeightMinus1 = (bytes[27].toInt() and 0xFF) or
+                ((bytes[28].toInt() and 0xFF) shl 8) or
+                ((bytes[29].toInt() and 0xFF) shl 16)
+
+        val curWidth = curWidthMinus1 + 1
+        val curHeight = curHeightMinus1 + 1
+
+        val offsetX = ((STICKER_SIZE - curWidth) / 2).coerceAtLeast(0)
+        val offsetY = ((STICKER_SIZE - curHeight) / 2).coerceAtLeast(0)
+
+        var vp8xData: ByteArray? = null
+        var animData: ByteArray? = null
+        val anmfChunks = mutableListOf<ByteArray>()
+
+        var pos = 12
+        while (pos + 8 <= bytes.size) {
+            val fourCC = String(bytes, pos, 4, Charsets.US_ASCII)
+            val chunkSize = ((bytes[pos + 4].toInt() and 0xFF) or
+                    ((bytes[pos + 5].toInt() and 0xFF) shl 8) or
+                    ((bytes[pos + 6].toInt() and 0xFF) shl 16) or
+                    ((bytes[pos + 7].toInt() and 0xFF) shl 24)).toLong() and 0xFFFFFFFFL
+
+            val dataStart = pos + 8
+            val dataEnd = minOf(bytes.size.toLong(), dataStart + chunkSize).toInt()
+            val actualLen = (dataEnd - dataStart).coerceAtLeast(0)
+            val chunkData = bytes.copyOfRange(dataStart, dataStart + actualLen)
+
+            when (fourCC) {
+                "VP8X" -> {
+                    // Update canvas dimensions to 512x512: 511 = 0x01FF
+                    chunkData[4] = 0xFF.toByte()
+                    chunkData[5] = 0x01.toByte()
+                    chunkData[6] = 0x00.toByte()
+                    chunkData[7] = 0xFF.toByte()
+                    chunkData[8] = 0x01.toByte()
+                    chunkData[9] = 0x00.toByte()
+                    vp8xData = chunkData
+                }
+                "ANIM" -> {
+                    animData = chunkData
+                }
+                "ANMF" -> {
+                    if (chunkData.size >= 16) {
+                        val origFrameX = ((chunkData[0].toInt() and 0xFF) or
+                                ((chunkData[1].toInt() and 0xFF) shl 8) or
+                                ((chunkData[2].toInt() and 0xFF) shl 16)) * 2
+                        val origFrameY = ((chunkData[3].toInt() and 0xFF) or
+                                ((chunkData[4].toInt() and 0xFF) shl 8) or
+                                ((chunkData[5].toInt() and 0xFF) shl 16)) * 2
+
+                        val newFrameX = ((origFrameX + offsetX) / 2).coerceAtLeast(0)
+                        val newFrameY = ((origFrameY + offsetY) / 2).coerceAtLeast(0)
+
+                        chunkData[0] = (newFrameX and 0xFF).toByte()
+                        chunkData[1] = ((newFrameX shr 8) and 0xFF).toByte()
+                        chunkData[2] = ((newFrameX shr 16) and 0xFF).toByte()
+
+                        chunkData[3] = (newFrameY and 0xFF).toByte()
+                        chunkData[4] = ((newFrameY shr 8) and 0xFF).toByte()
+                        chunkData[5] = ((newFrameY shr 16) and 0xFF).toByte()
+                    }
+                    anmfChunks.add(chunkData)
+                }
+                // Skip EXIF, XMP, ICCP to prevent WhatsApp corruption errors
+            }
+
+            val paddedSize = if (chunkSize % 2L != 0L) chunkSize + 1 else chunkSize
+            pos += (8 + paddedSize).toInt()
+        }
+
+        if (vp8xData == null || anmfChunks.isEmpty()) {
+            return bytes
+        }
+
+        // WhatsApp hard limit is 500 KB (500,000 bytes). If over limit, drop trailing frames safely
+        val maxTargetBytes = 500_000
+        fun calculateTotalSize(anmfs: List<ByteArray>): Int {
+            var s = 12 // RIFF (4) + size (4) + WEBP (4)
+            s += 8 + vp8xData.size + (vp8xData.size % 2)
+            if (animData != null) s += 8 + animData.size + (animData.size % 2)
+            for (c in anmfs) {
+                s += 8 + c.size + (c.size % 2)
+            }
+            return s
+        }
+
+        while (anmfChunks.size > 3 && calculateTotalSize(anmfChunks) > maxTargetBytes) {
+            anmfChunks.removeAt(anmfChunks.size - 1)
+        }
+
+        val bos = ByteArrayOutputStream(calculateTotalSize(anmfChunks) + 128)
+        bos.write("RIFF".toByteArray(Charsets.US_ASCII))
+        // Placeholder for file size
+        bos.write(0); bos.write(0); bos.write(0); bos.write(0)
+        bos.write("WEBP".toByteArray(Charsets.US_ASCII))
+
+        writeRawChunk(bos, "VP8X", vp8xData)
+        if (animData != null) {
+            writeRawChunk(bos, "ANIM", animData)
+        }
+        for (c in anmfChunks) {
+            writeRawChunk(bos, "ANMF", c)
+        }
+
+        val result = bos.toByteArray()
+        val riffSize = result.size - 8
+        result[4] = (riffSize and 0xFF).toByte()
+        result[5] = ((riffSize shr 8) and 0xFF).toByte()
+        result[6] = ((riffSize shr 16) and 0xFF).toByte()
+        result[7] = ((riffSize shr 24) and 0xFF).toByte()
+
+        return result
+    }
+
+    private fun writeRawChunk(bos: ByteArrayOutputStream, fourCC: String, data: ByteArray) {
+        bos.write(fourCC.toByteArray(Charsets.US_ASCII))
+        val len = data.size
+        bos.write(len and 0xFF)
+        bos.write((len shr 8) and 0xFF)
+        bos.write((len shr 16) and 0xFF)
+        bos.write((len shr 24) and 0xFF)
+        bos.write(data)
+        if (len % 2 != 0) {
+            bos.write(0)
+        }
     }
 }

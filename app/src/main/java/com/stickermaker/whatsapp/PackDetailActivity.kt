@@ -200,7 +200,12 @@ class PackDetailActivity : AppCompatActivity() {
 
         binding.btnDetailAddToWhatsApp.setOnClickListener {
             currentPack?.let { pack ->
-                WhatsAppChecker.addPackToWhatsApp(this, pack, ADD_PACK_REQUEST_CODE)
+                lifecycleScope.launch(Dispatchers.IO) {
+                    StickerStorage.sanitizeAndNormalizePacks(this@PackDetailActivity)
+                    withContext(Dispatchers.Main) {
+                        WhatsAppChecker.addPackToWhatsApp(this@PackDetailActivity, pack, ADD_PACK_REQUEST_CODE)
+                    }
+                }
             }
         }
     }
@@ -1017,7 +1022,11 @@ class PackDetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "¡Paquete añadido a WhatsApp con éxito!", Toast.LENGTH_SHORT).show()
             } else {
                 if (!error.isNullOrEmpty()) {
-                    Toast.makeText(this, "WhatsApp error: $error", Toast.LENGTH_LONG).show()
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("WhatsApp reportó un problema")
+                        .setMessage("WhatsApp no pudo procesar el paquete:\n\n$error")
+                        .setPositiveButton("Aceptar", null)
+                        .show()
                 } else if (resultCode == RESULT_CANCELED) {
                     android.util.Log.d("PackDetailActivity", "WhatsApp canceló la adición o el diálogo fue cerrado")
                 }
