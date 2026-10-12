@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#128C7E</color>
+    <color name="primary_dark">#075E54</color>
+    <color name="accent_whatsapp">#25D366</color>
+    <color name="secondary">#00A884</color>
+    
+    <color name="background_light">#F8FAF8</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="card_stroke">#E2E8F0</color>
+
+    <color name="text_primary">#1A202C</color>
+    <color name="text_secondary">#718096</color>
+    <color name="text_muted">#A0AEC0</color>
+
+    <color name="badge_warning">#DD6B20</color>
+    <color name="badge_success">#38A169</color>
+    <color name="danger">#E53E3E</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

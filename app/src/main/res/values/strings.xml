@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Sticker Maker WhatsApp</string>
+    <string name="create_new_pack">Crear Paquete</string>
+    <string name="pack_name_hint">Nombre del Paquete</string>
+    <string name="publisher_hint">Creador / Autor</string>
+    <string name="cancel">Cancelar</string>
+    <string name="create">Crear</string>
+    <string name="add_to_whatsapp">Añadir a WhatsApp</string>
+    <string name="added_to_whatsapp">Añadido a WhatsApp</string>
+    <string name="add_stickers">Añadir Stickers</string>
+    <string name="empty_packs_title">No tienes paquetes de stickers</string>
+    <string name="empty_packs_desc">Crea tu primer paquete y selecciona imágenes desde cualquier carpeta de tu móvil (Descargas, Galería, etc.).</string>
+    <string name="empty_stickers_title">Este paquete está vacío</string>
+    <string name="empty_stickers_desc">Toca en \"Añadir Stickers\" para seleccionar fotos de tu móvil. Necesitas al menos 3 stickers para importarlo a WhatsApp.</string>
+    <string name="stickers_count_format">%1$d / 30 stickers</string>
+    <string name="min_stickers_notice">Mínimo 3 stickers requeridos para WhatsApp</string>
+    <string name="delete_pack_confirm">¿Deseas eliminar este paquete de stickers?</string>
+    <string name="delete_sticker_confirm">¿Deseas eliminar este sticker?</string>
+    <string name="delete">Eliminar</string>
+    <string name="processing_images">Optimizando y convirtiendo imágenes a WebP 512x512…</string>
+    <string name="success_stickers_added">Stickers agregados correctamente</string>
+</resources>
