@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import kotlin.math.min
@@ -25,11 +26,27 @@ object ImageProcessor {
     private const val MAX_TRAY_BYTES = 50 * 1024 // 50 KB limit for tray icon
 
     /**
+     * Opens an InputStream supporting both content:// and direct file:// URIs.
+     */
+    fun openStream(context: Context, uri: Uri): InputStream? {
+        return try {
+            if (uri.scheme == "file") {
+                val path = uri.path
+                if (path != null) FileInputStream(File(path)) else null
+            } else {
+                context.contentResolver.openInputStream(uri)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
      * Checks if a Uri points strictly to a WebP file by reading its magic bytes (RIFF....WEBP).
      */
     fun isStrictlyWebP(context: Context, sourceUri: Uri): Boolean {
         return try {
-            context.contentResolver.openInputStream(sourceUri)?.use { stream ->
+            openStream(context, sourceUri)?.use { stream ->
                 val header = ByteArray(12)
                 val bytesRead = stream.read(header)
                 if (bytesRead >= 12) {
@@ -56,7 +73,7 @@ object ImageProcessor {
      */
     fun isAnimatedWebP(context: Context, sourceUri: Uri): Boolean {
         return try {
-            context.contentResolver.openInputStream(sourceUri)?.use { stream ->
+            openStream(context, sourceUri)?.use { stream ->
                 val header = ByteArray(4096)
                 val bytesRead = stream.read(header)
                 if (bytesRead >= 21) {
@@ -121,7 +138,7 @@ object ImageProcessor {
                 }
 
                 // Copy raw bytes to retain all animation frames and timing perfectly
-                val bytes = context.contentResolver.openInputStream(sourceUri)?.use { it.readBytes() }
+                val bytes = openStream(context, sourceUri)?.use { it.readBytes() }
                     ?: return false
 
                 // WhatsApp strict limit for animated stickers is 500 KB
@@ -136,14 +153,14 @@ object ImageProcessor {
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
-                context.contentResolver.openInputStream(sourceUri)?.use {
+                openStream(context, sourceUri)?.use {
                     BitmapFactory.decodeStream(it, null, options)
                 }
 
                 val isExactSquare512 = options.outWidth == STICKER_SIZE && options.outHeight == STICKER_SIZE
 
                 // Decode Bitmap
-                val inputStream: InputStream? = context.contentResolver.openInputStream(sourceUri)
+                val inputStream: InputStream? = openStream(context, sourceUri)
                 val originalBitmap = BitmapFactory.decodeStream(inputStream)
                 inputStream?.close()
 
@@ -178,7 +195,7 @@ object ImageProcessor {
      */
     fun generateTrayIcon(context: Context, sourceUri: Uri, destinationFile: File): Boolean {
         return try {
-            val inputStream: InputStream? = context.contentResolver.openInputStream(sourceUri)
+            val inputStream: InputStream? = openStream(context, sourceUri)
             val originalBitmap = BitmapFactory.decodeStream(inputStream)
             inputStream?.close()
 

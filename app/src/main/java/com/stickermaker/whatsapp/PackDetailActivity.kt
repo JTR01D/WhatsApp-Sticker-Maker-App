@@ -2,11 +2,15 @@ package com.stickermaker.whatsapp
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import java.io.File
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
@@ -43,6 +47,14 @@ class PackDetailActivity : AppCompatActivity() {
     private val selectFolderLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
             if (treeUri != null) {
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        treeUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 importWebpFromFolder(treeUri)
             }
         }
@@ -93,14 +105,14 @@ class PackDetailActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        // FAB shows choice dialog (Folder or Files)
+        // FAB shows choice dialog
         binding.fabAddStickers.setOnClickListener {
             showAddOptionsDialog()
         }
 
         // Direct button: Import Folder
         binding.btnImportFolder.setOnClickListener {
-            launchFolderPicker()
+            showAddOptionsDialog()
         }
 
         // Direct button: Import Files
@@ -117,7 +129,8 @@ class PackDetailActivity : AppCompatActivity() {
 
     private fun showAddOptionsDialog() {
         val options = arrayOf(
-            "📁 Seleccionar Carpeta completa (.webp)",
+            "💬 WhatsApp Stickers Oficial (Detectar automáticamente)",
+            "📁 Seleccionar Carpeta del almacenamiento (.webp)",
             "🖼️ Seleccionar Archivos sueltos (.webp)"
         )
 
@@ -125,12 +138,79 @@ class PackDetailActivity : AppCompatActivity() {
             .setTitle("Importar Stickers .webp")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> launchFolderPicker()
-                    1 -> launchFilePicker()
+                    0 -> checkAndImportWhatsAppStickersFolder()
+                    1 -> launchFolderPicker()
+                    2 -> launchFilePicker()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun checkAndImportWhatsAppStickersFolder() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Acceso a Archivos")
+                    .setMessage("Para leer directamente los stickers de WhatsApp sin las restricciones de Android, activa la opción 'Permitir administración de todos los archivos' en la siguiente pantalla.")
+                    .setPositiveButton("Configurar Permiso") { _, _ ->
+                        try {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                data = Uri.parse("package:$packageName")
+                            }
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                            startActivity(intent)
+                        }
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+                return
+            }
+        }
+
+        val candidates = listOf(
+            File("/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers"),
+            File("/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers"),
+            File("/storage/emulated/0/WhatsApp/Media/WhatsApp Stickers"),
+            File("/sdcard/WhatsApp/Media/WhatsApp Stickers"),
+            File("/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Stickers")
+        )
+
+        val targetDir = candidates.firstOrNull { it.exists() && it.isDirectory }
+        if (targetDir == null) {
+            Toast.makeText(this, "No se encontró la carpeta oficial de WhatsApp en el almacenamiento", Toast.LENGTH_LONG).show()
+            launchFolderPicker()
+            return
+        }
+
+        importDirectFolder(targetDir)
+    }
+
+    private fun importDirectFolder(folder: File) {
+        binding.layoutProcessing.visibility = View.VISIBLE
+        binding.progressBarImport.progress = 0
+        binding.tvProcessingStatus.text = "Escaneando ${folder.name}..."
+        setControlsEnabled(false)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val files = folder.listFiles()?.filter {
+                it.isFile && it.name.endsWith(".webp", ignoreCase = true)
+            } ?: emptyList()
+
+            if (files.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    binding.layoutProcessing.visibility = View.GONE
+                    setControlsEnabled(true)
+                    Toast.makeText(this@PackDetailActivity, "No se encontraron stickers .webp en ${folder.name}", Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+
+            val uris = files.map { Uri.fromFile(it) }
+            importUrisBatch(uris)
+        }
     }
 
     private fun launchFolderPicker() {
@@ -231,30 +311,46 @@ class PackDetailActivity : AppCompatActivity() {
         setControlsEnabled(false)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val rootDir = DocumentFile.fromTreeUri(this@PackDetailActivity, treeUri)
-            val webpUris = mutableListOf<Uri>()
+            try {
+                val rootDir = DocumentFile.fromTreeUri(this@PackDetailActivity, treeUri)
+                val webpUris = mutableListOf<Uri>()
 
-            rootDir?.listFiles()?.forEach { file ->
-                val name = file.name.orEmpty()
-                if (file.isFile && (name.endsWith(".webp", ignoreCase = true) || file.type == "image/webp")) {
-                    webpUris.add(file.uri)
+                rootDir?.listFiles()?.forEach { file ->
+                    val name = file.name.orEmpty()
+                    if (file.isFile && (name.endsWith(".webp", ignoreCase = true) || file.type == "image/webp")) {
+                        webpUris.add(file.uri)
+                    }
                 }
-            }
 
-            if (webpUris.isEmpty()) {
+                if (webpUris.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        binding.layoutProcessing.visibility = View.GONE
+                        setControlsEnabled(true)
+                        Toast.makeText(
+                            this@PackDetailActivity,
+                            "No se encontraron archivos .webp en la carpeta seleccionada",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    return@launch
+                }
+
+                importUrisBatch(webpUris)
+            } catch (e: Exception) {
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     binding.layoutProcessing.visibility = View.GONE
                     setControlsEnabled(true)
-                    Toast.makeText(
-                        this@PackDetailActivity,
-                        "No se encontraron archivos .webp en la carpeta seleccionada",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    MaterialAlertDialogBuilder(this@PackDetailActivity)
+                        .setTitle("Restricción del Sistema")
+                        .setMessage("Android no permite leer carpetas dentro de 'Android/media' usando este selector general.\n\nUsa la opción directa '💬 WhatsApp Stickers Oficial' para cargarlos al instante sin restricciones.")
+                        .setPositiveButton("Usar WhatsApp Oficial") { _, _ ->
+                            checkAndImportWhatsAppStickersFolder()
+                        }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
                 }
-                return@launch
             }
-
-            importUrisBatch(webpUris)
         }
     }
 
