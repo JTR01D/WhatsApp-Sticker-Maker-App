@@ -104,10 +104,6 @@ class MainActivity : AppCompatActivity() {
                     launchZipPicker()
                     true
                 }
-                R.id.action_scan_whatsapp -> {
-                    checkAndScanWhatsAppStickers()
-                    true
-                }
                 R.id.action_delete_all_packs -> {
                     confirmDeleteAllPacks()
                     true
@@ -145,10 +141,6 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnEmptyCreate.setOnClickListener {
             showCreatePackDialog()
-        }
-
-        binding.btnEmptyScanWhatsApp.setOnClickListener {
-            checkAndScanWhatsAppStickers()
         }
 
         binding.btnEmptyImportZip.setOnClickListener {
