@@ -415,13 +415,12 @@ class PackDetailActivity : AppCompatActivity() {
                 binding.layoutProcessing.visibility = View.GONE
                 suspendCancellableCoroutine { continuation ->
                     val options = arrayOf(
-                        "🎬 Solo stickers animados (${animatedUris.size})",
-                        "🖼️ Solo stickers estáticos (${staticUris.size})",
-                        "✨ Importar ambos (${animatedUris.size + staticUris.size} en total)"
+                        "🎬 Solo stickers animados (${animatedUris.size})\n   Importar únicamente los que tienen movimiento",
+                        "🖼️ Solo stickers estáticos (${staticUris.size})\n   Importar únicamente las imágenes fijas",
+                        "✨ Importar ambos (${animatedUris.size + staticUris.size} en total)\n   Separar en paquetes de estáticos y animados"
                     )
                     MaterialAlertDialogBuilder(this@PackDetailActivity)
-                        .setTitle("Stickers Detectados")
-                        .setMessage("Se encontraron en la carpeta:\n• 🎬 ${animatedUris.size} con movimiento (animados)\n• 🖼️ ${staticUris.size} estáticos\n\n¿Cuáles deseas importar a WhatsApp?")
+                        .setTitle("¿Cuáles stickers deseas importar?")
                         .setItems(options) { _, which ->
                             continuation.resume(which)
                         }
