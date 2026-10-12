@@ -60,11 +60,55 @@ class MainActivity : AppCompatActivity() {
         binding.toolbar.inflateMenu(R.menu.menu_main)
         binding.toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.action_share_all_zip -> {
+                    shareAllPacksAsZip()
+                    true
+                }
                 R.id.action_import_zip -> {
                     launchZipPicker()
                     true
                 }
                 else -> false
+            }
+        }
+    }
+
+    private fun shareAllPacksAsZip() {
+        val packs = StickerStorage.getAllPacks(this)
+        if (packs.isEmpty()) {
+            Toast.makeText(this, "No tienes paquetes creados para compartir", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Compartir Colección")
+            .setMessage("Comprimiendo todos los paquetes en un solo archivo ZIP...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val zipFile = StickerStorage.exportAllPacksToZip(this@MainActivity)
+            withContext(Dispatchers.Main) {
+                progressDialog.dismiss()
+                if (zipFile != null && zipFile.exists()) {
+                    try {
+                        val authority = "${applicationContext.packageName}.fileprovider"
+                        val uri = androidx.core.content.FileProvider.getUriForFile(this@MainActivity, authority, zipFile)
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/zip"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            putExtra(Intent.EXTRA_SUBJECT, "Colección completa de Stickers")
+                            putExtra(Intent.EXTRA_TEXT, "¡Aquí tienes mi colección completa de stickers (${packs.size} paquetes) para WhatsApp!")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(shareIntent, "Compartir todos los paquetes por WhatsApp"))
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "Error al compartir: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(this@MainActivity, "No se pudo generar el archivo ZIP de la colección", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

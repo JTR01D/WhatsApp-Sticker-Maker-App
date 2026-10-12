@@ -207,6 +207,66 @@ object StickerStorage {
         }
     }
 
+    /**
+     * Exports all packs (or a list of specific pack IDs) in a single multi-pack ZIP archive.
+     */
+    fun exportAllPacksToZip(context: Context, packIds: List<String>? = null): File? {
+        val allPacks = getAllPacks(context)
+        val targetPacks = if (!packIds.isNullOrEmpty()) {
+            allPacks.filter { packIds.contains(it.identifier) }
+        } else {
+            allPacks
+        }
+        if (targetPacks.isEmpty()) return null
+
+        return try {
+            val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+            val zipFile = File(exportDir, "coleccion_stickers_${System.currentTimeMillis()}.zip")
+            if (zipFile.exists()) zipFile.delete()
+
+            java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zipOut ->
+                // Write collection_metadata.json
+                val collectionData = mapOf(
+                    "version" to 1,
+                    "isCollection" to true,
+                    "packs" to targetPacks
+                )
+                val json = gson.toJson(collectionData)
+                zipOut.putNextEntry(java.util.zip.ZipEntry("collection_metadata.json"))
+                zipOut.write(json.toByteArray(Charsets.UTF_8))
+                zipOut.closeEntry()
+
+                for (pack in targetPacks) {
+                    val packDir = getPackDir(context, pack.identifier)
+
+                    // Write tray
+                    if (pack.trayImageFile.isNotEmpty()) {
+                        val trayFile = File(packDir, pack.trayImageFile)
+                        if (trayFile.exists()) {
+                            zipOut.putNextEntry(java.util.zip.ZipEntry("${pack.identifier}/${pack.trayImageFile}"))
+                            trayFile.inputStream().use { it.copyTo(zipOut) }
+                            zipOut.closeEntry()
+                        }
+                    }
+
+                    // Write stickers
+                    for (sticker in pack.stickers) {
+                        val file = File(packDir, sticker.imageFileName)
+                        if (file.exists()) {
+                            zipOut.putNextEntry(java.util.zip.ZipEntry("${pack.identifier}/${sticker.imageFileName}"))
+                            file.inputStream().use { it.copyTo(zipOut) }
+                            zipOut.closeEntry()
+                        }
+                    }
+                }
+            }
+            zipFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     data class ZipImportResult(
         val success: Boolean,
         val packName: String,
@@ -218,7 +278,8 @@ object StickerStorage {
     )
 
     /**
-     * Imports a sticker pack from a ZIP file, thoroughly checking against duplicates already in the app.
+     * Imports a sticker pack (single pack or multi-pack collection) from a ZIP file,
+     * thoroughly checking against duplicates already in the app.
      */
     fun importPackFromZip(context: Context, zipUri: Uri, targetPackId: String? = null): ZipImportResult {
         val tempExtractDir = File(context.cacheDir, "zip_extract_${System.currentTimeMillis()}").apply { mkdirs() }
@@ -226,32 +287,25 @@ object StickerStorage {
             val inputStream = ImageProcessor.openStream(context, zipUri)
                 ?: return ZipImportResult(false, "", 0, 0, 0, errorMessage = "No se pudo abrir el archivo ZIP")
 
-            var metadataPackName: String? = null
-            var metadataPublisher: String? = null
-            var metadataIsAnimated: Boolean? = null
-            var metadataTrayFile: String? = null
-            val extractedFiles = mutableListOf<File>()
+            var collectionJson: String? = null
+            var singlePackJson: String? = null
+            val extractedFilesMap = mutableMapOf<String, File>() // relative path -> File
 
             java.util.zip.ZipInputStream(inputStream).use { zipIn ->
                 var entry = zipIn.nextEntry
                 while (entry != null) {
-                    val name = File(entry.name).name // avoid path traversal
-                    if (!entry.isDirectory && name.isNotEmpty()) {
-                        if (name.equals("pack_metadata.json", ignoreCase = true) || name.equals("metadata.json", ignoreCase = true)) {
-                            val json = zipIn.bufferedReader(Charsets.UTF_8).readText()
-                            try {
-                                val obj = gson.fromJson(json, Map::class.java)
-                                metadataPackName = obj["name"] as? String
-                                metadataPublisher = obj["publisher"] as? String
-                                metadataIsAnimated = obj["animatedStickerPack"] as? Boolean
-                                metadataTrayFile = obj["trayImageFile"] as? String
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        } else if (name.endsWith(".webp", ignoreCase = true)) {
-                            val outFile = File(tempExtractDir, name)
+                    val entryName = entry.name.replace("\\", "/")
+                    if (!entry.isDirectory && entryName.isNotEmpty()) {
+                        val simpleName = File(entryName).name
+                        if (simpleName.equals("collection_metadata.json", ignoreCase = true)) {
+                            collectionJson = zipIn.bufferedReader(Charsets.UTF_8).readText()
+                        } else if (simpleName.equals("pack_metadata.json", ignoreCase = true) || simpleName.equals("metadata.json", ignoreCase = true)) {
+                            singlePackJson = zipIn.bufferedReader(Charsets.UTF_8).readText()
+                        } else if (simpleName.endsWith(".webp", ignoreCase = true)) {
+                            val outFile = File(tempExtractDir, entryName)
+                            outFile.parentFile?.mkdirs()
                             outFile.outputStream().use { zipIn.copyTo(it) }
-                            extractedFiles.add(outFile)
+                            extractedFilesMap[entryName] = outFile
                         }
                     }
                     zipIn.closeEntry()
@@ -259,6 +313,88 @@ object StickerStorage {
                 }
             }
 
+            // Get existing signatures across ALL packs currently in the app
+            val (existingPayloads, existingVisuals) = getAllExistingStickerSignatures(context)
+
+            // CASE 1: Multi-pack Collection ZIP
+            if (!collectionJson.isNullOrEmpty()) {
+                val collectionObj = gson.fromJson(collectionJson, Map::class.java)
+                val rawPacks = collectionObj["packs"] as? List<Map<String, Any>> ?: emptyList()
+
+                var totalAdded = 0
+                var totalDuplicatesSkipped = 0
+                var packsCreated = 0
+                var totalStickersInZip = 0
+
+                for (packMap in rawPacks) {
+                    val packName = (packMap["name"] as? String)?.ifBlank { "Paquete Importado" } ?: "Paquete Importado"
+                    val publisher = (packMap["publisher"] as? String)?.ifBlank { "Importado" } ?: "Importado"
+                    val isAnimated = (packMap["animatedStickerPack"] as? Boolean) ?: false
+                    val packIdentifier = (packMap["identifier"] as? String) ?: ""
+                    val stickersList = packMap["stickers"] as? List<Map<String, Any>> ?: emptyList()
+
+                    val validFilesForPack = mutableListOf<File>()
+                    for (stk in stickersList) {
+                        val imgFile = stk["image_file"] as? String ?: stk["imageFileName"] as? String ?: continue
+                        totalStickersInZip++
+
+                        // Find matching file in extractedFilesMap
+                        val candidateFile = extractedFilesMap["$packIdentifier/$imgFile"]
+                            ?: extractedFilesMap.values.firstOrNull { it.name.equals(imgFile, ignoreCase = true) }
+                            ?: continue
+
+                        val inspection = ImageProcessor.inspectWebP(context, Uri.fromFile(candidateFile))
+                        if (!inspection.isValidWebP) continue
+
+                        val isDup = (inspection.payloadHash.isNotEmpty() && existingPayloads.contains(inspection.payloadHash)) ||
+                                    (inspection.visualDHash.isNotEmpty() && existingVisuals.contains(inspection.visualDHash))
+
+                        if (isDup) {
+                            totalDuplicatesSkipped++
+                        } else {
+                            if (inspection.payloadHash.isNotEmpty()) existingPayloads.add(inspection.payloadHash)
+                            if (inspection.visualDHash.isNotEmpty()) existingVisuals.add(inspection.visualDHash)
+                            validFilesForPack.add(candidateFile)
+                        }
+                    }
+
+                    if (validFilesForPack.isNotEmpty()) {
+                        val chunks = validFilesForPack.chunked(30)
+                        for ((idx, chunk) in chunks.withIndex()) {
+                            val newPackId = UUID.randomUUID().toString()
+                            val title = if (chunks.size > 1) "$packName (Parte ${idx + 1})" else packName
+                            val newPack = StickerPack(
+                                identifier = newPackId,
+                                name = title,
+                                publisher = publisher,
+                                trayImageFile = "",
+                                animatedStickerPack = isAnimated
+                            )
+                            savePack(context, newPack)
+                            packsCreated++
+
+                            for (file in chunk) {
+                                if (addStickerToPack(context, newPackId, Uri.fromFile(file))) {
+                                    totalAdded++
+                                }
+                            }
+                        }
+                    }
+                }
+
+                tempExtractDir.deleteRecursively()
+                return ZipImportResult(
+                    success = true,
+                    packName = "Colección (${packsCreated} paquetes creados)",
+                    newStickersAdded = totalAdded,
+                    duplicatesSkipped = totalDuplicatesSkipped,
+                    totalInZip = totalStickersInZip,
+                    createdPackCount = packsCreated
+                )
+            }
+
+            // CASE 2: Single Pack ZIP or flat list of WebP files
+            val extractedFiles = extractedFilesMap.values.toList()
             if (extractedFiles.isEmpty()) {
                 tempExtractDir.deleteRecursively()
                 return ZipImportResult(false, "", 0, 0, 0, errorMessage = "El archivo ZIP no contiene stickers .webp")

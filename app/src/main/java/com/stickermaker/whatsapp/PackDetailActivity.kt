@@ -645,6 +645,7 @@ class PackDetailActivity : AppCompatActivity() {
         var addedStatic = 0
         var addedAnimated = 0
         var createdExtraPacks = 0
+        val newlyCreatedPackIds = mutableListOf<String>()
 
         // Helper to find unique pack name
         fun getUniquePackName(pattern: String): String {
@@ -707,6 +708,7 @@ class PackDetailActivity : AppCompatActivity() {
             val staticChunks = partitionIntoValidPacks(staticForExtra)
             for (chunk in staticChunks) {
                 val newPackId = UUID.randomUUID().toString()
+                newlyCreatedPackIds.add(newPackId)
                 val newPackName = getUniquePackName("$baseName (Parte {idx})")
                 val newPack = StickerPack(
                     identifier = newPackId,
@@ -764,6 +766,7 @@ class PackDetailActivity : AppCompatActivity() {
 
             for (chunk in animatedChunks) {
                 val newPackId = UUID.randomUUID().toString()
+                newlyCreatedPackIds.add(newPackId)
                 val newPackName = getUniquePackName(animatedPattern)
                 val newPack = StickerPack(
                     identifier = newPackId,
@@ -794,6 +797,8 @@ class PackDetailActivity : AppCompatActivity() {
             setControlsEnabled(true)
             loadPackData()
 
+            val allCreatedPackIds = mutableListOf(current.identifier).apply { addAll(newlyCreatedPackIds) }
+
             val details = buildString {
                 append("¡Stickers importados con éxito!\n\n")
                 if (addedAnimated > 0) append("• 🎬 $addedAnimated con movimiento (animados)\n")
@@ -801,15 +806,58 @@ class PackDetailActivity : AppCompatActivity() {
                 if (duplicatesCount > 0) append("• 🧹 $duplicatesCount stickers duplicados omitidos automáticamente\n")
                 if (invalidCount > 0) append("• ⚠️ $invalidCount archivos omitidos (no eran .webp)\n")
                 if (createdExtraPacks > 0) {
-                    append("\n📦 Se crearon $createdExtraPacks paquete(s) adicional(es) para cumplir con el límite de WhatsApp (máximo 30 stickers por paquete).")
+                    append("\n📦 Se crearon ${createdExtraPacks + 1} paquetes en total para cumplir con el límite oficial de WhatsApp (máximo 30 stickers por paquete).\n\n¿Deseas compartir todos estos paquetes juntos en un solo archivo ZIP?")
                 }
             }
 
-            MaterialAlertDialogBuilder(this@PackDetailActivity)
+            val builder = MaterialAlertDialogBuilder(this@PackDetailActivity)
                 .setTitle("¡Importación Completada!")
                 .setMessage(details)
-                .setPositiveButton("Entendido", null)
-                .show()
+
+            if (createdExtraPacks > 0) {
+                builder.setPositiveButton("📦 Compartir Todos (.zip)") { _, _ ->
+                    shareSpecificPacksAsZip(allCreatedPackIds)
+                }
+                builder.setNegativeButton("Ver este paquete", null)
+            } else {
+                builder.setPositiveButton("Entendido", null)
+            }
+            builder.show()
+        }
+    }
+
+    private fun shareSpecificPacksAsZip(packIds: List<String>) {
+        binding.layoutProcessing.visibility = View.VISIBLE
+        binding.progressBarImport.isIndeterminate = true
+        binding.tvProcessingStatus.text = "Comprimiendo todos los paquetes en un solo ZIP..."
+        setControlsEnabled(false)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val zipFile = StickerStorage.exportAllPacksToZip(this@PackDetailActivity, packIds)
+            withContext(Dispatchers.Main) {
+                binding.layoutProcessing.visibility = View.GONE
+                binding.progressBarImport.isIndeterminate = false
+                setControlsEnabled(true)
+
+                if (zipFile != null && zipFile.exists()) {
+                    try {
+                        val authority = "${applicationContext.packageName}.fileprovider"
+                        val uri = androidx.core.content.FileProvider.getUriForFile(this@PackDetailActivity, authority, zipFile)
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/zip"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            putExtra(Intent.EXTRA_SUBJECT, "Colección de Stickers (${packIds.size} paquetes)")
+                            putExtra(Intent.EXTRA_TEXT, "¡Aquí tienes mi colección completa de stickers (${packIds.size} paquetes) para WhatsApp!")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(shareIntent, "Compartir todos los paquetes por WhatsApp"))
+                    } catch (e: Exception) {
+                        Toast.makeText(this@PackDetailActivity, "Error al compartir: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(this@PackDetailActivity, "No se pudo generar el archivo ZIP de los paquetes", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
