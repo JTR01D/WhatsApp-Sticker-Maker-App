@@ -104,10 +104,25 @@ object StickerStorage {
 
     /**
      * Imports an image Uri into the specified pack, preserving animated WebP or formatting static WebP.
+     * Returns true on success. Use [addStickerToPackTracked] if you need the resulting file hashes.
      */
     fun addStickerToPack(context: Context, packId: String, imageUri: Uri): Boolean {
-        val pack = getPack(context, packId) ?: return false
-        if (pack.stickers.size >= 30) return false // WhatsApp max limit
+        return addStickerToPackTracked(context, packId, imageUri) != null
+    }
+
+    /**
+     * Like [addStickerToPack] but also returns the payload/visual hash pair of the **saved** file
+     * so callers can update their in-session dedup sets to reflect the processed (re-encoded) bytes.
+     * Returns null on failure.
+     */
+    @Synchronized
+    fun addStickerToPackTracked(
+        context: Context,
+        packId: String,
+        imageUri: Uri
+    ): Pair<String, String>? {
+        val pack = getPack(context, packId) ?: return null
+        if (pack.stickers.size >= 30) return null // WhatsApp max limit
 
         val isAnimated = ImageProcessor.isAnimatedWebP(context, imageUri)
 
@@ -117,7 +132,7 @@ object StickerStorage {
             pack.animatedStickerPack = isAnimated
         } else {
             if (pack.animatedStickerPack != isAnimated) {
-                return false // Type mismatch
+                return null // Type mismatch
             }
         }
 
@@ -125,7 +140,14 @@ object StickerStorage {
         val destinationFile = getStickerFile(context, packId, stickerFileName)
 
         val success = ImageProcessor.processStickerImage(context, imageUri, destinationFile, isAnimated)
-        if (!success) return false
+        if (!success) return null
+
+        // Cache the hash of the *saved* (processed) file so future dedup calls find it
+        val savedInspection = ImageProcessor.inspectWebP(context, Uri.fromFile(destinationFile))
+        val savedPair = Pair(savedInspection.payloadHash, savedInspection.visualDHash)
+        if (savedInspection.isValidWebP) {
+            signatureCache[destinationFile.absolutePath] = savedPair
+        }
 
         // If pack doesn't have a tray icon yet, create one from this first sticker
         if (pack.trayImageFile.isEmpty()) {
@@ -138,7 +160,7 @@ object StickerStorage {
 
         pack.stickers.add(Sticker(imageFileName = stickerFileName, emojis = listOf("😀")))
         savePack(context, pack)
-        return true
+        return savedPair
     }
 
     private val signatureCache = mutableMapOf<String, Pair<String, String>>()
@@ -445,8 +467,12 @@ object StickerStorage {
                             packsCreated++
 
                             for (file in chunk) {
-                                if (addStickerToPack(context, newPackId, Uri.fromFile(file))) {
+                                val saved = addStickerToPackTracked(context, newPackId, Uri.fromFile(file))
+                                if (saved != null) {
                                     totalAdded++
+                                    // Update dedup sets with processed destination hashes
+                                    if (saved.first.isNotEmpty()) existingPayloads.add(saved.first)
+                                    if (saved.second.isNotEmpty()) existingVisuals.add(saved.second)
                                 }
                             }
                         }
@@ -551,8 +577,12 @@ object StickerStorage {
                     packsCreated++
 
                     for (file in chunk) {
-                        if (addStickerToPack(context, packId, Uri.fromFile(file))) {
+                        val saved = addStickerToPackTracked(context, packId, Uri.fromFile(file))
+                        if (saved != null) {
                             totalAdded++
+                            // Update dedup sets with processed destination hashes
+                            if (saved.first.isNotEmpty()) existingPayloads.add(saved.first)
+                            if (saved.second.isNotEmpty()) existingVisuals.add(saved.second)
                         }
                     }
                 }
@@ -597,6 +627,65 @@ object StickerStorage {
             savePack(context, pack)
         }
         return removed
+    }
+
+    /**
+     * Scans all packs and removes stickers that are duplicates *within the same pack*
+     * (same payload or visual hash, different filename). Also cleans up orphaned files.
+     * Returns the total number of duplicate sticker entries removed.
+     */
+    @Synchronized
+    fun deduplicatePackStickers(context: Context): Int {
+        val packs = getAllPacks(context)
+        var totalRemoved = 0
+        var anyModified = false
+
+        for (pack in packs) {
+            val seenPayloads = mutableSetOf<String>()
+            val seenVisuals = mutableSetOf<String>()
+            val packDir = getPackDir(context, pack.identifier)
+            val toRemove = mutableListOf<String>()
+
+            for (sticker in pack.stickers) {
+                val file = File(packDir, sticker.imageFileName)
+                if (!file.exists()) {
+                    toRemove.add(sticker.imageFileName)
+                    continue
+                }
+                val inspection = ImageProcessor.inspectWebP(context, Uri.fromFile(file))
+                if (!inspection.isValidWebP) {
+                    toRemove.add(sticker.imageFileName)
+                    continue
+                }
+                val isDup =
+                    (inspection.payloadHash.isNotEmpty() && seenPayloads.contains(inspection.payloadHash)) ||
+                    (inspection.visualDHash.isNotEmpty() && seenVisuals.contains(inspection.visualDHash))
+
+                if (isDup) {
+                    toRemove.add(sticker.imageFileName)
+                } else {
+                    if (inspection.payloadHash.isNotEmpty()) seenPayloads.add(inspection.payloadHash)
+                    if (inspection.visualDHash.isNotEmpty()) seenVisuals.add(inspection.visualDHash)
+                }
+            }
+
+            if (toRemove.isNotEmpty()) {
+                pack.stickers.removeAll { it.imageFileName in toRemove }
+                for (name in toRemove) {
+                    val f = File(packDir, name)
+                    signatureCache.remove(f.absolutePath)
+                    if (f.exists()) f.delete()
+                }
+                totalRemoved += toRemove.size
+                anyModified = true
+                android.util.Log.d("StickerStorage", "Dedup pack '${pack.name}': removed ${toRemove.size} duplicates: $toRemove")
+            }
+        }
+
+        if (anyModified) {
+            savePacks(context, packs)
+        }
+        return totalRemoved
     }
 
     /**

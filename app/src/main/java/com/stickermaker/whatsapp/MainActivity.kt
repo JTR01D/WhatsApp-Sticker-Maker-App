@@ -754,8 +754,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var hasRunStartupDedup = false
+
     override fun onResume() {
         super.onResume()
+        if (!hasRunStartupDedup) {
+            hasRunStartupDedup = true
+            // Run dedup once per session in background to clean up any existing duplicate stickers
+            lifecycleScope.launch(Dispatchers.IO) {
+                val removed = StickerStorage.deduplicatePackStickers(this@MainActivity)
+                if (removed > 0) {
+                    android.util.Log.i("MainActivity", "Startup dedup removed $removed duplicate stickers")
+                    withContext(Dispatchers.Main) {
+                        loadPacks()
+                    }
+                }
+            }
+        }
         loadPacks()
     }
 

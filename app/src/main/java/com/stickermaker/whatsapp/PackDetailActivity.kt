@@ -779,8 +779,13 @@ class PackDetailActivity : AppCompatActivity() {
                     }
 
                     for (uri in chunk) {
-                        val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, targetPackId, uri)
-                        if (ok) addedCount++
+                        // Use tracked variant to get destination hash and update dedup sets
+                        val savedHashes = StickerStorage.addStickerToPackTracked(this@PackDetailActivity, targetPackId, uri)
+                        if (savedHashes != null) {
+                            addedCount++
+                            if (savedHashes.first.isNotEmpty()) existingPayloads.add(savedHashes.first)
+                            if (savedHashes.second.isNotEmpty()) existingVisuals.add(savedHashes.second)
+                        }
                         withContext(Dispatchers.Main) {
                             binding.tvProcessingStatus.text = "Guardando en '$packName' ($addedCount stickers)..."
                         }
@@ -821,8 +826,12 @@ class PackDetailActivity : AppCompatActivity() {
             val toProcess = chosenUris.take(availableSlots)
 
             for ((idx, uri) in toProcess.withIndex()) {
-                val ok = StickerStorage.addStickerToPack(this@PackDetailActivity, current.identifier, uri)
-                if (ok) addedCount++
+                val savedHashes = StickerStorage.addStickerToPackTracked(this@PackDetailActivity, current.identifier, uri)
+                if (savedHashes != null) {
+                    addedCount++
+                    if (savedHashes.first.isNotEmpty()) existingPayloads.add(savedHashes.first)
+                    if (savedHashes.second.isNotEmpty()) existingVisuals.add(savedHashes.second)
+                }
                 val percent = ((idx + 1) * 100) / toProcess.size
                 withContext(Dispatchers.Main) {
                     binding.progressBarImport.progress = percent
