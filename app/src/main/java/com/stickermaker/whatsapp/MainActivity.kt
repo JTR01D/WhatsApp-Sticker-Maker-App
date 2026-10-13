@@ -21,12 +21,14 @@ import com.stickermaker.whatsapp.databinding.ActivityMainBinding
 import com.stickermaker.whatsapp.databinding.DialogCreatePackBinding
 import com.stickermaker.whatsapp.databinding.DialogExportZipProgressBinding
 import com.stickermaker.whatsapp.databinding.DialogExportZipSuccessBinding
+import com.stickermaker.whatsapp.databinding.DialogMainMoreOptionsBinding
 import com.stickermaker.whatsapp.databinding.DialogSelectPacksWhatsappBinding
 import com.stickermaker.whatsapp.databinding.ItemPackSelectBinding
 import com.stickermaker.whatsapp.model.StickerPack
 import com.stickermaker.whatsapp.utils.StickerStorage
 import com.stickermaker.whatsapp.utils.WhatsAppChecker
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -127,21 +129,50 @@ class MainActivity : AppCompatActivity() {
                     showSelectPacksToWhatsAppDialog()
                     true
                 }
-                R.id.action_share_all_zip, R.id.action_save_all_zip -> {
+                R.id.action_share_all_zip -> {
                     shareAllPacksAsZip()
                     true
                 }
-                R.id.action_import_zip -> {
-                    launchZipPicker()
-                    true
-                }
-                R.id.action_delete_all_packs -> {
-                    confirmDeleteAllPacks()
+                R.id.action_more_options -> {
+                    showMoreOptionsMenuDialog()
                     true
                 }
                 else -> false
             }
         }
+    }
+
+    private fun showMoreOptionsMenuDialog() {
+        val optionsBinding = DialogMainMoreOptionsBinding.inflate(layoutInflater)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(optionsBinding.root)
+            .create()
+        applyLiquidGlassDialog(dialog)
+
+        // 1. Guardar en Dispositivo (.zip)
+        optionsBinding.cardOptionSaveZip.setOnClickListener {
+            dialog.dismiss()
+            shareAllPacksAsZip()
+        }
+
+        // 2. Importar Paquete (.zip)
+        optionsBinding.cardOptionImportZip.setOnClickListener {
+            dialog.dismiss()
+            launchZipPicker()
+        }
+
+        // 3. Vaciar / Eliminar Todos los Paquetes
+        optionsBinding.cardOptionDeleteAll.setOnClickListener {
+            dialog.dismiss()
+            confirmDeleteAllPacks()
+        }
+
+        // Botón Cerrar
+        optionsBinding.btnCloseOptions.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun setupRecyclerView() {
@@ -238,7 +269,7 @@ class MainActivity : AppCompatActivity() {
         val selectedIds = adapter.selectedPackIds.toList()
         if (selectedIds.isEmpty()) return
 
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("¿Eliminar ${selectedIds.size} paquetes?")
             .setMessage("Se eliminarán los ${selectedIds.size} paquetes seleccionados de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.")
             .setPositiveButton(R.string.delete) { _, _ ->
@@ -250,7 +281,9 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "${selectedIds.size} paquetes eliminados", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton(R.string.cancel, null)
-            .show()
+            .create()
+        applyLiquidGlassDialog(dialog)
+        dialog.show()
     }
 
     private fun confirmDeleteAllPacks() {
@@ -260,7 +293,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("¿Vaciar todos los paquetes?")
             .setMessage("Se eliminarán absolutamente todos los $count paquetes de la aplicación.\n\nEsta acción es irreversible.")
             .setPositiveButton(R.string.delete) { _, _ ->
@@ -272,7 +305,9 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Se han eliminado todos los paquetes", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton(R.string.cancel, null)
-            .show()
+            .create()
+        applyLiquidGlassDialog(dialog)
+        dialog.show()
     }
 
     private fun exitSelectionMode() {
@@ -547,21 +582,36 @@ class MainActivity : AppCompatActivity() {
         applyLiquidGlassDialog(progressDialog)
         progressDialog.show()
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        var isCancelled = false
+        var exportJob: Job? = null
+
+        progressBinding.btnCancelExport.setOnClickListener {
+            isCancelled = true
+            exportJob?.cancel()
+            progressDialog.dismiss()
+            Toast.makeText(this@MainActivity, "Exportación cancelada", Toast.LENGTH_SHORT).show()
+        }
+
+        exportJob = lifecycleScope.launch(Dispatchers.IO) {
             val zipFile = StickerStorage.exportAllPacksToZip(
                 context = this@MainActivity,
                 onProgress = { current, total, packName ->
+                    if (isCancelled) return@exportAllPacksToZip
                     val percent = if (total > 0) (current * 100) / total else 0
                     runOnUiThread {
-                        progressBinding.progressExport.progress = percent
-                        progressBinding.tvExportPercentage.text = "$percent%"
-                        progressBinding.tvExportCounter.text = "$current / $total paquetes"
-                        progressBinding.tvExportPackStatus.text = "Empaquetando: $packName"
+                        if (!isCancelled) {
+                            progressBinding.progressExport.progress = percent
+                            progressBinding.tvExportPercentage.text = "$percent%"
+                            progressBinding.tvExportCounter.text = "$current / $total paquetes"
+                            progressBinding.tvExportPackStatus.text = "Empaquetando: $packName"
+                        }
                     }
-                }
+                },
+                isCancelled = { isCancelled }
             )
 
             withContext(Dispatchers.Main) {
+                if (isCancelled) return@withContext
                 progressDialog.dismiss()
                 if (zipFile != null && zipFile.exists()) {
                     showExportZipSuccessDialog(zipFile, packs.size)

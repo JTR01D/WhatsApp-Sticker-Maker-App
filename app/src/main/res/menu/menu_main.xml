@@ -12,18 +12,8 @@
         android:title="Exportar / Compartir Colección (.zip)"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_save_all_zip"
-        android:icon="@drawable/ic_save"
-        android:title="Guardar Colección en Dispositivo (.zip)"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_import_zip"
-        android:icon="@drawable/ic_archive"
-        android:title="Importar Paquete (.zip)"
-        app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_delete_all_packs"
-        android:icon="@drawable/ic_delete"
-        android:title="Vaciar / Eliminar Todos los Paquetes"
-        app:showAsAction="never" />
+        android:id="@+id/action_more_options"
+        android:icon="@drawable/ic_more_vert"
+        android:title="Más opciones"
+        app:showAsAction="always" />
 </menu>

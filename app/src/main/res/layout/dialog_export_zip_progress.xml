@@ -129,4 +129,19 @@
 
     </LinearLayout>
 
+    <!-- Botón Cancelar Liquid Glass -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelExport"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_liquid_glass_button_secondary"
+        android:paddingVertical="10dp"
+        android:text="Cancelar"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:backgroundTint="@null"
+        app:cornerRadius="16dp" />
+
 </LinearLayout>

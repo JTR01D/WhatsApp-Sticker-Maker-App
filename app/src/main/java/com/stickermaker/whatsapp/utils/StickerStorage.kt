@@ -232,7 +232,8 @@ object StickerStorage {
     fun exportAllPacksToZip(
         context: Context,
         packIds: List<String>? = null,
-        onProgress: ((current: Int, total: Int, packName: String) -> Unit)? = null
+        onProgress: ((current: Int, total: Int, packName: String) -> Unit)? = null,
+        isCancelled: (() -> Boolean)? = null
     ): File? {
         val allPacks = getAllPacks(context)
         val targetPacks = if (!packIds.isNullOrEmpty()) {
@@ -260,6 +261,11 @@ object StickerStorage {
                 zipOut.closeEntry()
 
                 for ((index, pack) in targetPacks.withIndex()) {
+                    if (isCancelled?.invoke() == true) {
+                        try { zipOut.close() } catch (e: Exception) {}
+                        if (zipFile.exists()) zipFile.delete()
+                        return null
+                    }
                     onProgress?.invoke(index + 1, targetPacks.size, pack.name)
 
                     val packDir = getPackDir(context, pack.identifier)
