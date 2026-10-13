@@ -1,7 +1,11 @@
 package com.stickermaker.whatsapp.utils
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.stickermaker.whatsapp.model.Sticker
@@ -225,7 +229,11 @@ object StickerStorage {
     /**
      * Exports all packs (or a list of specific pack IDs) in a single multi-pack ZIP archive.
      */
-    fun exportAllPacksToZip(context: Context, packIds: List<String>? = null): File? {
+    fun exportAllPacksToZip(
+        context: Context,
+        packIds: List<String>? = null,
+        onProgress: ((current: Int, total: Int, packName: String) -> Unit)? = null
+    ): File? {
         val allPacks = getAllPacks(context)
         val targetPacks = if (!packIds.isNullOrEmpty()) {
             allPacks.filter { packIds.contains(it.identifier) }
@@ -251,7 +259,9 @@ object StickerStorage {
                 zipOut.write(json.toByteArray(Charsets.UTF_8))
                 zipOut.closeEntry()
 
-                for (pack in targetPacks) {
+                for ((index, pack) in targetPacks.withIndex()) {
+                    onProgress?.invoke(index + 1, targetPacks.size, pack.name)
+
                     val packDir = getPackDir(context, pack.identifier)
 
                     // Write tray
@@ -276,6 +286,46 @@ object StickerStorage {
                 }
             }
             zipFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Copies a generated ZIP file directly into the device's public Downloads directory.
+     * Returns the Uri of the saved file, or null if failed.
+     */
+    fun saveZipToDownloads(context: Context, zipFile: File): Uri? {
+        val fileName = zipFile.name
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/zip")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val resolver = context.contentResolver
+                val collectionUri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                val itemUri = resolver.insert(collectionUri, values) ?: return null
+
+                resolver.openOutputStream(itemUri)?.use { outStream ->
+                    zipFile.inputStream().use { inStream ->
+                        inStream.copyTo(outStream)
+                    }
+                }
+
+                values.clear()
+                values.put(MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(itemUri, values, null, null)
+                itemUri
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                val destFile = File(downloadsDir, fileName)
+                zipFile.copyTo(destFile, overwrite = true)
+                Uri.fromFile(destFile)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             null

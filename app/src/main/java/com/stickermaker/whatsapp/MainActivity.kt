@@ -18,6 +18,8 @@ import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.stickermaker.whatsapp.databinding.ActivityMainBinding
 import com.stickermaker.whatsapp.databinding.DialogCreatePackBinding
+import com.stickermaker.whatsapp.databinding.DialogExportZipProgressBinding
+import com.stickermaker.whatsapp.databinding.DialogExportZipSuccessBinding
 import com.stickermaker.whatsapp.databinding.DialogSelectPacksWhatsappBinding
 import com.stickermaker.whatsapp.databinding.ItemPackSelectBinding
 import com.stickermaker.whatsapp.model.StickerPack
@@ -54,6 +56,22 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
                 importZipFile(uri)
+            }
+        }
+
+    private var pendingExportZipFile: File? = null
+
+    private val createDocumentLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+            if (uri != null && pendingExportZipFile != null) {
+                try {
+                    contentResolver.openOutputStream(uri)?.use { out ->
+                        pendingExportZipFile!!.inputStream().use { it.copyTo(out) }
+                    }
+                    Toast.makeText(this, "✅ Colección ZIP guardada correctamente", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Error al guardar archivo: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -96,7 +114,7 @@ class MainActivity : AppCompatActivity() {
                     showSelectPacksToWhatsAppDialog()
                     true
                 }
-                R.id.action_share_all_zip -> {
+                R.id.action_share_all_zip, R.id.action_save_all_zip -> {
                     shareAllPacksAsZip()
                     true
                 }
@@ -497,41 +515,104 @@ class MainActivity : AppCompatActivity() {
     private fun shareAllPacksAsZip() {
         val packs = StickerStorage.getAllPacks(this)
         if (packs.isEmpty()) {
-            Toast.makeText(this, "No tienes paquetes creados para compartir", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No tienes paquetes creados para exportar", Toast.LENGTH_SHORT).show()
             return
         }
 
+        val progressBinding = DialogExportZipProgressBinding.inflate(layoutInflater)
+        progressBinding.progressExport.isIndeterminate = false
+        progressBinding.progressExport.progress = 0
+        progressBinding.tvExportCounter.text = "0 / ${packs.size} paquetes"
+        progressBinding.tvExportPercentage.text = "0%"
+        progressBinding.tvExportPackStatus.text = "Preparando paquetes..."
+
         val progressDialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Compartir Colección")
-            .setMessage("Comprimiendo todos los paquetes en un solo archivo ZIP...")
+            .setView(progressBinding.root)
             .setCancelable(false)
             .create()
         progressDialog.show()
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val zipFile = StickerStorage.exportAllPacksToZip(this@MainActivity)
+            val zipFile = StickerStorage.exportAllPacksToZip(
+                context = this@MainActivity,
+                onProgress = { current, total, packName ->
+                    val percent = if (total > 0) (current * 100) / total else 0
+                    runOnUiThread {
+                        progressBinding.progressExport.progress = percent
+                        progressBinding.tvExportPercentage.text = "$percent%"
+                        progressBinding.tvExportCounter.text = "$current / $total paquetes"
+                        progressBinding.tvExportPackStatus.text = "Empaquetando: $packName"
+                    }
+                }
+            )
+
             withContext(Dispatchers.Main) {
                 progressDialog.dismiss()
                 if (zipFile != null && zipFile.exists()) {
-                    try {
-                        val authority = "${applicationContext.packageName}.fileprovider"
-                        val uri = androidx.core.content.FileProvider.getUriForFile(this@MainActivity, authority, zipFile)
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/zip"
-                            putExtra(Intent.EXTRA_STREAM, uri)
-                            putExtra(Intent.EXTRA_SUBJECT, "Colección completa de Stickers")
-                            putExtra(Intent.EXTRA_TEXT, "¡Aquí tienes mi colección completa de stickers (${packs.size} paquetes) para WhatsApp!")
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        startActivity(Intent.createChooser(shareIntent, "Compartir todos los paquetes por WhatsApp"))
-                    } catch (e: Exception) {
-                        Toast.makeText(this@MainActivity, "Error al compartir: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
+                    showExportZipSuccessDialog(zipFile, packs.size)
                 } else {
                     Toast.makeText(this@MainActivity, "No se pudo generar el archivo ZIP de la colección", Toast.LENGTH_SHORT).show()
                 }
             }
         }
+    }
+
+    private fun showExportZipSuccessDialog(zipFile: File, totalPacks: Int) {
+        val successBinding = DialogExportZipSuccessBinding.inflate(layoutInflater)
+        val fileSizeMb = String.format(java.util.Locale.US, "%.1f MB", zipFile.length() / (1024.0 * 1024.0))
+        successBinding.tvZipDetails.text = "$totalPacks paquetes • $fileSizeMb"
+        successBinding.tvZipFileName.text = zipFile.name
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(successBinding.root)
+            .create()
+
+        // 1. Guardar directo en Descargas del dispositivo
+        successBinding.btnSaveToDownloads.setOnClickListener {
+            val savedUri = StickerStorage.saveZipToDownloads(this, zipFile)
+            if (savedUri != null) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("✅ Guardado en Descargas")
+                    .setMessage("Tu colección se guardó exitosamente en la carpeta Descargas de tu teléfono:\n\n📁 Download/${zipFile.name}\n\n($fileSizeMb)")
+                    .setPositiveButton("Aceptar", null)
+                    .show()
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this, "No se pudo guardar automáticamente. Intenta 'Elegir otra carpeta'", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        // 2. Elegir carpeta con SAF (Storage Access Framework)
+        successBinding.btnSaveCustomFolder.setOnClickListener {
+            pendingExportZipFile = zipFile
+            createDocumentLauncher.launch(zipFile.name)
+            dialog.dismiss()
+        }
+
+        // 3. Compartir por Apps (WhatsApp, etc.)
+        successBinding.btnShareViaApps.setOnClickListener {
+            dialog.dismiss()
+            try {
+                val authority = "${applicationContext.packageName}.fileprovider"
+                val uri = androidx.core.content.FileProvider.getUriForFile(this, authority, zipFile)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/zip"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Colección completa de Stickers")
+                    putExtra(Intent.EXTRA_TEXT, "¡Aquí tienes mi colección completa de stickers ($totalPacks paquetes) para WhatsApp!")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(shareIntent, "Compartir todos los paquetes por WhatsApp"))
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error al compartir: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        successBinding.btnCloseDialog.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun launchZipPicker() {

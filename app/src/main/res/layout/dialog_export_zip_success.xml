@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Header: Icon & Title -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_dialog_icon_squircle">
+
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_check"
+                app:tint="@color/accent_whatsapp" />
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="¡Colección ZIP Lista!"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvZipDetails"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                tools:text="21 paquetes • 178 MB" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- File info card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_dialog_info_banner"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_archive"
+            app:tint="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/tvZipFileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:ellipsize="middle"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="coleccion_stickers_20261013.zip" />
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="¿Cómo deseas guardar o compartir este archivo?"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <!-- Action 1: Save directly to Downloads -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSaveToDownloads"
+        style="@style/Widget.Material3.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="@color/btn_whatsapp_bg"
+        android:paddingVertical="12dp"
+        android:text="Guardar en Descargas (Dispositivo)"
+        android:textColor="@color/btn_whatsapp_text"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:cornerRadius="12dp"
+        app:icon="@drawable/ic_save"
+        app:iconGravity="textStart"
+        app:iconTint="@color/btn_whatsapp_text" />
+
+    <!-- Action 2: Choose folder to save -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSaveCustomFolder"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:paddingVertical="10dp"
+        android:text="Elegir otra carpeta para guardar..."
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        app:cornerRadius="12dp"
+        app:icon="@drawable/ic_folder"
+        app:iconGravity="textStart"
+        app:iconTint="@color/text_primary"
+        app:strokeColor="@color/card_stroke" />
+
+    <!-- Action 3: Share via Apps -->
+    <com.google.android.material.button.MaterialButton
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:id="@+id/btnShareViaApps"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:paddingVertical="10dp"
+        android:text="Compartir por WhatsApp u otras Apps"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        app:cornerRadius="12dp"
+        app:icon="@drawable/ic_share"
+        app:iconGravity="textStart"
+        app:iconTint="@color/text_primary" />
+
+    <!-- Close button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCloseDialog"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="4dp"
+        android:text="Cerrar"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+</LinearLayout>
