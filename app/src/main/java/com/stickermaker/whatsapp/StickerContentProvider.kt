@@ -162,17 +162,15 @@ class StickerContentProvider : ContentProvider() {
 
     @Throws(FileNotFoundException::class)
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
-        android.util.Log.d(TAG, "openFile solicitado: uri=$uri, mode=$mode")
         val file = getTargetFile(uri)
-        android.util.Log.d(TAG, "openFile resolvió archivo: ${file.absolutePath}, tamaño=${file.length()} bytes")
+        android.util.Log.d(TAG, "openFile resolvió: ${file.name}, tamaño=${file.length()} bytes")
         return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 
     @Throws(FileNotFoundException::class)
     override fun openAssetFile(uri: Uri, mode: String): AssetFileDescriptor {
-        android.util.Log.d(TAG, "openAssetFile solicitado: uri=$uri, mode=$mode")
         val file = getTargetFile(uri)
-        android.util.Log.d(TAG, "openAssetFile resolvió archivo: ${file.absolutePath}, tamaño=${file.length()} bytes")
+        android.util.Log.d(TAG, "openAssetFile resolvió: ${file.name}, tamaño=${file.length()} bytes")
         val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
         return AssetFileDescriptor(pfd, 0, file.length())
     }
@@ -184,36 +182,55 @@ class StickerContentProvider : ContentProvider() {
 
         return when {
             match == STICKERS_ASSET || pathSegments.size >= 3 -> {
-                val packId = pathSegments[pathSegments.size - 2]
-                val fileName = pathSegments[pathSegments.size - 1]
-                val targetFile = StickerStorage.getStickerFile(context, packId, fileName)
+                val rawPackId = pathSegments[pathSegments.size - 2]
+                val rawFileName = pathSegments[pathSegments.size - 1]
+
+                // Sanitizar nombres de archivo y packId para evitar secuencias ../
+                val sanitizedFileName = File(rawFileName).name
+                val sanitizedPackId = File(rawPackId).name
+
+                val packDir = StickerStorage.getPackDir(context, sanitizedPackId).canonicalFile
+                val targetFile = File(packDir, sanitizedFileName).canonicalFile
+
+                if (!targetFile.path.startsWith(packDir.path + File.separator)) {
+                    android.util.Log.e(TAG, "Path Traversal bloqueado en openAssetFile: $uri")
+                    throw SecurityException("Invalid path traversal in URI")
+                }
+
                 if (targetFile.exists()) {
                     targetFile
                 } else {
-                    findFileInAnyPack(context, fileName)
-                        ?: throw FileNotFoundException("Sticker file does not exist: ${targetFile.absolutePath}")
+                    findFileInAnyPack(context, sanitizedFileName)
+                        ?: throw FileNotFoundException("Sticker file does not exist: $sanitizedFileName")
                 }
             }
             match == STICKER_PACK_TRAY_ICON || pathSegments.size == 2 -> {
-                val fileName = uri.lastPathSegment ?: throw FileNotFoundException("No file name in URI: $uri")
-                findFileInAnyPack(context, fileName)
-                    ?: throw FileNotFoundException("Tray icon does not exist: $fileName")
+                val rawFileName = uri.lastPathSegment ?: throw FileNotFoundException("No file name in URI: $uri")
+                val sanitizedFileName = File(rawFileName).name
+                findFileInAnyPack(context, sanitizedFileName)
+                    ?: throw FileNotFoundException("Tray icon does not exist: $sanitizedFileName")
             }
             else -> throw IllegalArgumentException("Unsupported URI for file access: $uri")
         }
     }
 
     private fun findFileInAnyPack(context: Context, fileName: String): File? {
+        val sanitizedFileName = File(fileName).name
+        val rootDir = File(context.filesDir, "stickers").canonicalFile
+
         val packs = StickerStorage.getAllPacks(context)
         for (pack in packs) {
-            val file = StickerStorage.getStickerFile(context, pack.identifier, fileName)
-            if (file.exists()) return file
+            val file = StickerStorage.getStickerFile(context, pack.identifier, sanitizedFileName).canonicalFile
+            if (file.path.startsWith(rootDir.path + File.separator) && file.exists()) {
+                return file
+            }
         }
-        val rootDir = File(context.filesDir, "stickers")
         rootDir.listFiles()?.forEach { dir ->
             if (dir.isDirectory) {
-                val candidate = File(dir, fileName)
-                if (candidate.exists()) return candidate
+                val candidate = File(dir, sanitizedFileName).canonicalFile
+                if (candidate.path.startsWith(rootDir.path + File.separator) && candidate.exists()) {
+                    return candidate
+                }
             }
         }
         return null

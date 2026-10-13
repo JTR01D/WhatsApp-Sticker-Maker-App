@@ -396,9 +396,15 @@ object StickerStorage {
                             singlePackJson = zipIn.bufferedReader(Charsets.UTF_8).readText()
                         } else if (simpleName.endsWith(".webp", ignoreCase = true)) {
                             val outFile = File(tempExtractDir, entryName)
-                            outFile.parentFile?.mkdirs()
-                            outFile.outputStream().use { zipIn.copyTo(it) }
-                            extractedFilesMap[entryName] = outFile
+                            val canonicalDest = outFile.canonicalPath
+                            val canonicalBase = tempExtractDir.canonicalPath
+                            if (!canonicalDest.startsWith(canonicalBase + File.separator)) {
+                                android.util.Log.w("StickerStorage", "Zip Slip bloqueado para entrada: $entryName")
+                            } else {
+                                outFile.parentFile?.mkdirs()
+                                outFile.outputStream().use { zipIn.copyTo(it) }
+                                extractedFilesMap[entryName] = outFile
+                            }
                         }
                     }
                     zipIn.closeEntry()

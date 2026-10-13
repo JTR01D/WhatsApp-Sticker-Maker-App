@@ -3,10 +3,24 @@ $Host.UI.RawUI.WindowTitle = "Logs en tiempo real - WhatsApp Sticker Maker"
 
 Clear-Host
 
-$adb = "C:\Users\juane\Downloads\platform-tools\adb.exe"
+$adbCandidates = @(
+    "adb",
+    "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe",
+    "$env:USERPROFILE\Downloads\platform-tools\adb.exe"
+)
+$adb = $null
+foreach ($candidate in $adbCandidates) {
+    if (Get-Command $candidate -ErrorAction SilentlyContinue) {
+        $adb = $candidate
+        break
+    } elseif (Test-Path $candidate) {
+        $adb = $candidate
+        break
+    }
+}
 
-if (-not (Test-Path $adb)) {
-    Write-Host "Error: No se encontro adb.exe en $adb" -ForegroundColor Red
+if (-not $adb) {
+    Write-Host "Error: No se encontro adb.exe. Asegurate de tener Android SDK o platform-tools en el PATH o en Downloads." -ForegroundColor Red
     pause
     exit
 }
