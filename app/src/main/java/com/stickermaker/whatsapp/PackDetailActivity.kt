@@ -202,8 +202,10 @@ class PackDetailActivity : AppCompatActivity() {
             currentPack?.let { pack ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     StickerStorage.sanitizeAndNormalizePacks(this@PackDetailActivity)
+                    val refreshed = StickerStorage.getPack(this@PackDetailActivity, pack.identifier) ?: pack
                     withContext(Dispatchers.Main) {
-                        WhatsAppChecker.addPackToWhatsApp(this@PackDetailActivity, pack, ADD_PACK_REQUEST_CODE)
+                        currentPack = refreshed
+                        WhatsAppChecker.addPackToWhatsApp(this@PackDetailActivity, refreshed, ADD_PACK_REQUEST_CODE)
                     }
                 }
             }

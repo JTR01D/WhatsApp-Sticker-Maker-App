@@ -154,7 +154,8 @@
             android:id="@+id/btnCancel"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
             android:layout_weight="1"
             android:text="@string/cancel"
             android:textColor="@color/text_secondary"
@@ -162,15 +163,16 @@
             app:cornerRadius="14dp" />
 
         <View
-            android:layout_width="12dp"
+            android:layout_width="8dp"
             android:layout_height="1dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCreatePack"
             style="@style/Widget.Material3.Button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1.4"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_weight="1.6"
             android:backgroundTint="@color/btn_whatsapp_bg"
             android:text="Crear Paquete"
             android:textColor="@color/btn_whatsapp_text"

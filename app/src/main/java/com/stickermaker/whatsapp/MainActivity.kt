@@ -361,22 +361,25 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             StickerStorage.sanitizeAndNormalizePacks(this@MainActivity)
+            val refreshedPacks = packsToAdd.map { p ->
+                StickerStorage.getPack(this@MainActivity, p.identifier) ?: p
+            }
             withContext(Dispatchers.Main) {
-                if (packsToAdd.size == 1) {
+                if (refreshedPacks.size == 1) {
                     sequentialAddQueue.clear()
                     totalSequentialCount = 1
                     currentSequentialIndex = 0
-                    WhatsAppChecker.addPackToWhatsApp(this@MainActivity, packsToAdd.first(), ADD_PACK_REQUEST_CODE)
+                    WhatsAppChecker.addPackToWhatsApp(this@MainActivity, refreshedPacks.first(), ADD_PACK_REQUEST_CODE)
                     return@withContext
                 }
 
                 MaterialAlertDialogBuilder(this@MainActivity)
-                    .setTitle("📲 Añadir ${packsToAdd.size} Paquetes a WhatsApp")
+                    .setTitle("📲 Añadir ${refreshedPacks.size} Paquetes a WhatsApp")
                     .setMessage("Por seguridad, WhatsApp te pedirá confirmar cada paquete con un toque en su pantalla.\n\nLa app te abrirá automáticamente un paquete tras otro de forma continua.\n\n¿Deseas comenzar ahora?")
                     .setPositiveButton("Comenzar") { _, _ ->
                         sequentialAddQueue.clear()
-                        sequentialAddQueue.addAll(packsToAdd)
-                        totalSequentialCount = packsToAdd.size
+                        sequentialAddQueue.addAll(refreshedPacks)
+                        totalSequentialCount = refreshedPacks.size
                         currentSequentialIndex = 0
                         launchNextInWhatsAppQueue()
                     }

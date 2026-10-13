@@ -511,6 +511,17 @@ object ImageProcessor {
                         chunkData[3] = (newFrameY and 0xFF).toByte()
                         chunkData[4] = ((newFrameY shr 8) and 0xFF).toByte()
                         chunkData[5] = ((newFrameY shr 16) and 0xFF).toByte()
+
+                        // WhatsApp Rule: Frame duration must be >= 8 ms! If 0 or < 8, set safe default 100ms
+                        var frameDuration = (chunkData[12].toInt() and 0xFF) or
+                                ((chunkData[13].toInt() and 0xFF) shl 8) or
+                                ((chunkData[14].toInt() and 0xFF) shl 16)
+                        if (frameDuration < 8) {
+                            frameDuration = 100
+                            chunkData[12] = (frameDuration and 0xFF).toByte()
+                            chunkData[13] = ((frameDuration shr 8) and 0xFF).toByte()
+                            chunkData[14] = ((frameDuration shr 16) and 0xFF).toByte()
+                        }
                     }
                     anmfChunks.add(chunkData)
                 }
@@ -523,6 +534,41 @@ object ImageProcessor {
 
         if (vp8xData == null || anmfChunks.isEmpty()) {
             return bytes
+        }
+
+        // WhatsApp animated stickers requirement: at least 2 frames for animation loop
+        if (anmfChunks.size == 1) {
+            val f0 = anmfChunks[0]
+            val f0Dur = 500
+            f0[12] = (f0Dur and 0xFF).toByte()
+            f0[13] = ((f0Dur shr 8) and 0xFF).toByte()
+            f0[14] = ((f0Dur shr 16) and 0xFF).toByte()
+            anmfChunks.add(f0.copyOf())
+        }
+
+        // WhatsApp Rule: Total animation duration must be <= 10,000 ms (10 seconds)
+        var totalDur = 0
+        for (c in anmfChunks) {
+            if (c.size >= 16) {
+                val d = (c[12].toInt() and 0xFF) or
+                        ((c[13].toInt() and 0xFF) shl 8) or
+                        ((c[14].toInt() and 0xFF) shl 16)
+                totalDur += d
+            }
+        }
+        if (totalDur > 10000 && totalDur > 0) {
+            val scaleFactor = 9500.0 / totalDur
+            for (c in anmfChunks) {
+                if (c.size >= 16) {
+                    val d = (c[12].toInt() and 0xFF) or
+                            ((c[13].toInt() and 0xFF) shl 8) or
+                            ((c[14].toInt() and 0xFF) shl 16)
+                    val newD = (d * scaleFactor).toInt().coerceIn(8, 10000)
+                    c[12] = (newD and 0xFF).toByte()
+                    c[13] = ((newD shr 8) and 0xFF).toByte()
+                    c[14] = ((newD shr 16) and 0xFF).toByte()
+                }
+            }
         }
 
         // WhatsApp hard limit is 500 KB (500,000 bytes). If over limit, drop trailing frames safely
