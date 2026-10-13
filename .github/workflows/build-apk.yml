@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   build:
     name: Build Android APK
@@ -14,6 +18,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -29,9 +35,49 @@ jobs:
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
+      - name: Prepare APK for Release
+        run: |
+          mkdir -p release_assets
+          cp app/build/outputs/apk/debug/*.apk release_assets/WhatsAppStickerMaker.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: WhatsAppStickerMaker-APK
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 14
+          path: release_assets/WhatsAppStickerMaker.apk
+          retention-days: 7
+
+      - name: Update 'latest' Git Tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa latest -m "Release build ${{ github.sha }}"
+          git push origin latest --force
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "WhatsApp Sticker Maker - Última Versión (Latest)"
+          body: |
+            ## 🚀 WhatsApp Sticker Maker (APK Oficial)
+            
+            Descarga directa y pública del instalador para Android (no requiere cuenta de GitHub):
+            
+            - 📲 **Descargar APK**: [WhatsAppStickerMaker.apk](https://github.com/${{ github.repository }}/releases/download/latest/WhatsAppStickerMaker.apk)
+            - 🛡️ **Privacidad**: 100% Offline (Sin permisos de Internet)
+            - 💎 **Diseño**: Liquid Glass & Material Design 3
+            - 🌐 **Idiomas**: Español 🇪🇸 / English 🇺🇸
+          files: release_assets/WhatsAppStickerMaker.apk
+          make_latest: true
+
+      - name: Delete Old Workflow Runs
+        uses: Mattraks/delete-workflow-runs@v2
+        continue-on-error: true
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0

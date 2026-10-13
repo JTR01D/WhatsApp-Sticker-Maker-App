@@ -1,6 +1,9 @@
 # 🎨 WhatsApp Sticker Maker (Android)
 
 <p align="center">
+  <a href="https://github.com/JTR01D/WhatsApp-Sticker-Maker-App/releases/latest/download/WhatsAppStickerMaker.apk">
+    <img src="https://img.shields.io/badge/Download-Latest_APK-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+  </a>
   <img src="https://img.shields.io/badge/Platform-Android_7.0+-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
   <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Language" />
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License" />
@@ -45,14 +48,21 @@
 
 ---
 
-### 🚀 Descarga y Compilación (GitHub Actions)
+### 🚀 Descarga Oficial y Compilación Automática
 
-No necesitas tener Android Studio ni el SDK de Android instalados en tu computadora. El proyecto incluye un flujo de compilación automática en la nube con **GitHub Actions**:
+No necesitas tener Android Studio ni compilar manualmente el código. Cada actualización de este repositorio genera y publica automáticamente el APK oficial:
 
-1. Ve a la pestaña **[Actions](../../actions)** de este repositorio en GitHub.
-2. Selecciona la ejecución más reciente del flujo **"Build WhatsApp Sticker Maker APK"**.
-3. En la sección inferior **"Artifacts"**, descarga el archivo ZIP generado.
-4. Descomprime el archivo e instala el `.apk` en tu dispositivo Android.
+#### 📥 Opción 1: Descarga Directa (Recomendada - 100% Pública)
+Puedes descargar directamente el instalador APK sin necesidad de tener cuenta de GitHub ni descomprimir archivos:
+👉 **[Descargar WhatsAppStickerMaker.apk (Última Versión)](https://github.com/JTR01D/WhatsApp-Sticker-Maker-App/releases/latest/download/WhatsAppStickerMaker.apk)**
+
+También puedes consultar los detalles de la versión en la sección de **[Releases](../../releases/latest)**.
+
+#### ⚙️ Opción 2: Flujo de Integración Continua (GitHub Actions)
+Si deseas inspeccionar el proceso de compilación en la nube:
+1. Ve a la pestaña **[Actions](../../actions)** de este repositorio.
+2. Verás únicamente la ejecución activa más reciente de **"Build WhatsApp Sticker Maker APK"** (el historial anterior se depura automáticamente).
+3. En la sección **"Artifacts"**, también está disponible el archivo generado.
 
 ---
 
@@ -94,14 +104,21 @@ No necesitas tener Android Studio ni el SDK de Android instalados en tu computad
 
 ---
 
-### 🚀 Download & Build (GitHub Actions CI)
+### 🚀 Official Download & Cloud CI Build
 
-You do not need Android Studio or the Android SDK installed on your PC. This repository includes automated cloud builds via **GitHub Actions**:
+You don't need Android Studio or the Android SDK installed on your PC. Every update to this repository automatically builds and publishes the latest official APK:
 
+#### 📥 Option 1: Direct Download (Recommended - 100% Public)
+Download the installer APK directly with a single click (no GitHub account required, no zip extraction needed):
+👉 **[Download WhatsAppStickerMaker.apk (Latest Build)](https://github.com/JTR01D/WhatsApp-Sticker-Maker-App/releases/latest/download/WhatsAppStickerMaker.apk)**
+
+You can also view the release notes in the **[Releases](../../releases/latest)** section.
+
+#### ⚙️ Option 2: Continuous Integration (GitHub Actions)
+To inspect the automated cloud build logs:
 1. Go to the **[Actions](../../actions)** tab of this repository.
-2. Click on the latest workflow run for **"Build WhatsApp Sticker Maker APK"**.
-3. Under the **"Artifacts"** section, download the build artifact.
-4. Unzip the downloaded file and install the `.apk` on your Android device.
+2. Only the latest active run for **"Build WhatsApp Sticker Maker APK"** is retained (previous runs are automatically purged).
+3. You can also download the build artifact from the **"Artifacts"** section.
 
 ---
 
