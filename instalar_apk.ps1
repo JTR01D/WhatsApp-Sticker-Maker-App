@@ -156,6 +156,39 @@ Write-Host "[3/3] Ejecutando instalacion segura conservando datos (pm install -r
 $installOutput = & $adb -s $targetDevice shell pm install -r -d $remoteTmpPath
 Write-Host $installOutput -ForegroundColor Gray
 
+if ($installOutput -match "INSTALL_FAILED_UPDATE_INCOMPATIBLE") {
+    Write-Host ""
+    Write-Host "[!] Cambio de firma detectado entre compilaciones de CI." -ForegroundColor Yellow
+    Write-Host "[*] Protegiendo tus stickers: Guardando copia de seguridad automatica..." -ForegroundColor Cyan
+    
+    $backupDir = "$env:TEMP\WSM_DataBackup"
+    if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir -Force | Out-Null }
+    $backupFile = Join-Path $backupDir ("wsm_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".tar")
+    
+    cmd.exe /c """$adb"" -s $targetDevice exec-out run-as com.stickermaker.whatsapp.debug tar -cf - -C files . > ""$backupFile"""
+    
+    if ((Test-Path $backupFile) -and (Get-Item $backupFile).Length -gt 100) {
+        Write-Host "[OK] Copia de seguridad guardada con exito en tu PC: $backupFile" -ForegroundColor Green
+        
+        Write-Host "[*] Reinstalando aplicacion con la nueva firma..." -ForegroundColor Cyan
+        & $adb -s $targetDevice uninstall com.stickermaker.whatsapp.debug | Out-Null
+        $installOutput = & $adb -s $targetDevice shell pm install $remoteTmpPath
+        Write-Host $installOutput -ForegroundColor Gray
+        
+        if ($installOutput -match "Success") {
+            Write-Host "[*] Restaurando paquetes y stickers..." -ForegroundColor Cyan
+            & $adb -s $targetDevice shell am start -n com.stickermaker.whatsapp.debug/com.stickermaker.whatsapp.MainActivity | Out-Null
+            Start-Sleep -Seconds 1
+            & $adb -s $targetDevice shell am force-stop com.stickermaker.whatsapp.debug
+            
+            cmd.exe /c """$adb"" -s $targetDevice exec-in run-as com.stickermaker.whatsapp.debug tar -xf - -C files < ""$backupFile"""
+            Write-Host "[OK] ¡Todos tus datos y stickers fueron restaurados con exito!" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "[!] No se pudo realizar la copia de seguridad. Reinstalacion cancelada para evitar perdida de datos." -ForegroundColor Red
+    }
+}
+
 # Limpiar temporal en /data/local/tmp
 & $adb -s $targetDevice shell rm $remoteTmpPath | Out-Null
 
