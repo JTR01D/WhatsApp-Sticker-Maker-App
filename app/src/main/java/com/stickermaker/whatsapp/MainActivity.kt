@@ -605,33 +605,41 @@ class MainActivity : AppCompatActivity() {
 
     private fun showCreatePackDialog() {
         val dialogBinding = DialogCreatePackBinding.inflate(layoutInflater)
-
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogBinding.root)
-            .setPositiveButton("Crear Paquete") { _, _ ->
-                val name = dialogBinding.etPackName.text?.toString()?.trim().orEmpty()
-                val publisher = dialogBinding.etPublisher.text?.toString()?.trim().orEmpty()
+            .create()
 
-                if (name.isEmpty()) {
-                    Toast.makeText(this, "Por favor, escribe un nombre para el paquete", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
 
-                val finalPublisher = if (publisher.isEmpty()) "Personal" else publisher
-                val identifier = UUID.randomUUID().toString()
+        dialogBinding.btnCreatePack.setOnClickListener {
+            val name = dialogBinding.etPackName.text?.toString()?.trim().orEmpty()
+            val publisher = dialogBinding.etPublisher.text?.toString()?.trim().orEmpty()
 
-                val newPack = StickerPack(
-                    identifier = identifier,
-                    name = name,
-                    publisher = finalPublisher,
-                    trayImageFile = ""
-                )
-
-                StickerStorage.savePack(this, newPack)
-                openPackDetail(identifier)
+            if (name.isEmpty()) {
+                dialogBinding.tilPackName.error = "Escribe un nombre para el paquete"
+                dialogBinding.etPackName.requestFocus()
+                return@setOnClickListener
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+            dialogBinding.tilPackName.error = null
+
+            val finalPublisher = if (publisher.isEmpty()) "Personal" else publisher
+            val identifier = UUID.randomUUID().toString()
+
+            val newPack = StickerPack(
+                identifier = identifier,
+                name = name,
+                publisher = finalPublisher,
+                trayImageFile = ""
+            )
+
+            StickerStorage.savePack(this, newPack)
+            dialog.dismiss()
+            openPackDetail(identifier)
+        }
+
+        dialog.show()
     }
 
     private fun openPackDetail(packId: String) {

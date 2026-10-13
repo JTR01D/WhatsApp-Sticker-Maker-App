@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:padding="24dp">
 
-    <!-- Header with Icon and Title -->
+    <!-- Header with Modern Squircle Icon & Title -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -14,27 +14,27 @@
         android:orientation="horizontal">
 
         <ImageView
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@drawable/bg_circle_tinted"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/bg_dialog_icon_squircle"
             android:contentDescription="@null"
-            android:padding="9dp"
+            android:padding="12dp"
             android:src="@drawable/ic_sticker_pack"
             app:tint="@color/accent_whatsapp" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
+            android:layout_marginStart="16dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Crear Paquete de Stickers"
+                android:text="Crear Paquete"
                 android:textColor="@color/text_primary"
-                android:textSize="19sp"
+                android:textSize="20sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -43,12 +43,13 @@
                 android:layout_marginTop="2dp"
                 android:text="Configura la información para WhatsApp"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="13sp" />
 
         </LinearLayout>
 
     </LinearLayout>
 
+    <!-- Pack Name Field -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilPackName"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -56,14 +57,18 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
         android:hint="@string/pack_name_hint"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusBottomEnd="16dp"
+        app:boxCornerRadiusBottomStart="16dp"
+        app:boxCornerRadiusTopEnd="16dp"
+        app:boxCornerRadiusTopStart="16dp"
         app:boxStrokeColor="@color/accent_whatsapp"
-        app:helperText="Ejemplo: Mis Memes, Favoritos, Risas"
+        app:endIconMode="clear_text"
+        app:endIconTint="@color/text_secondary"
+        app:helperText="Ej: Mis Memes, Risas, Familia"
         app:helperTextTextColor="@color/text_secondary"
-        app:hintTextColor="@color/accent_whatsapp">
+        app:hintTextColor="@color/accent_whatsapp"
+        app:startIconDrawable="@drawable/ic_tag"
+        app:startIconTint="@color/accent_whatsapp">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etPackName"
@@ -71,10 +76,12 @@
             android:layout_height="wrap_content"
             android:inputType="textCapSentences"
             android:maxLength="128"
-            android:textColor="@color/text_primary" />
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- Publisher / Author Field -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilPublisher"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -82,14 +89,18 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
         android:hint="@string/publisher_hint"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusBottomEnd="16dp"
+        app:boxCornerRadiusBottomStart="16dp"
+        app:boxCornerRadiusTopEnd="16dp"
+        app:boxCornerRadiusTopStart="16dp"
         app:boxStrokeColor="@color/accent_whatsapp"
-        app:helperText="Ejemplo: Juan, Personal"
+        app:endIconMode="clear_text"
+        app:endIconTint="@color/text_secondary"
+        app:helperText="Nombre o apodo que aparecerá en WhatsApp"
         app:helperTextTextColor="@color/text_secondary"
-        app:hintTextColor="@color/accent_whatsapp">
+        app:hintTextColor="@color/accent_whatsapp"
+        app:startIconDrawable="@drawable/ic_person"
+        app:startIconTint="@color/accent_whatsapp">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etPublisher"
@@ -97,8 +108,79 @@
             android:layout_height="wrap_content"
             android:inputType="textCapWords"
             android:maxLength="128"
-            android:textColor="@color/text_primary" />
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
 
     </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Info Banner Tip -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_dialog_info_banner"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_star"
+            app:tint="@color/accent_whatsapp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="Podrás añadir de 3 a 30 stickers (estáticos o animados) al crearlo."
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp" />
+
+    </LinearLayout>
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancel"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/cancel"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            app:cornerRadius="14dp" />
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCreatePack"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1.4"
+            android:backgroundTint="@color/btn_whatsapp_bg"
+            android:text="Crear Paquete"
+            android:textColor="@color/btn_whatsapp_text"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="14dp"
+            app:icon="@drawable/ic_add"
+            app:iconGravity="textStart"
+            app:iconTint="@color/btn_whatsapp_text" />
+
+    </LinearLayout>
 
 </LinearLayout>
