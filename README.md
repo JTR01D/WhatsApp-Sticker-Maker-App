@@ -141,7 +141,7 @@ To inspect the automated cloud build logs:
 | **UI Framework** | Android Views + ViewBinding + Material Design 3 |
 | **Image Engine** | Custom WebP Processor + Glide 4.16.0 |
 | **JSON Serialization** | Google Gson 2.10.1 |
-| **Permissions / Permisos** | `READ_MEDIA_IMAGES` (API 33+), `READ_EXTERNAL_STORAGE` (≤ API 32) |
+| **Permissions / Permisos** | `MANAGE_EXTERNAL_STORAGE` (Carpetas locales WhatsApp en Android 11+), `READ_MEDIA_IMAGES` (API 33+), `READ_EXTERNAL_STORAGE` (≤ API 32) |
 | **Network / Red** | **None (No INTERNET permission declared)** |
 
 ---
