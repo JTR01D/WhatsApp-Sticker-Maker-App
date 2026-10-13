@@ -234,22 +234,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         langBinding.cardLangSpanish.setOnClickListener {
+            dialog.dismiss()
             if (currentLang != LocaleHelper.LANG_ES) {
                 LocaleHelper.setLocale(this, LocaleHelper.LANG_ES)
-                dialog.dismiss()
-                recreate()
-            } else {
-                dialog.dismiss()
             }
         }
 
         langBinding.cardLangEnglish.setOnClickListener {
+            dialog.dismiss()
             if (currentLang != LocaleHelper.LANG_EN) {
                 LocaleHelper.setLocale(this, LocaleHelper.LANG_EN)
-                dialog.dismiss()
-                recreate()
-            } else {
-                dialog.dismiss()
             }
         }
 
@@ -839,19 +833,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private var hasRunStartupDedup = false
+    private var hasCheckedStartupDedup = false
 
     override fun onResume() {
         super.onResume()
-        if (!hasRunStartupDedup) {
-            hasRunStartupDedup = true
-            // Run dedup once per session in background to clean up any existing duplicate stickers
-            lifecycleScope.launch(Dispatchers.IO) {
-                val removed = StickerStorage.deduplicatePackStickers(this@MainActivity)
-                if (removed > 0) {
-                    android.util.Log.i("MainActivity", "Startup dedup removed $removed duplicate stickers")
-                    withContext(Dispatchers.Main) {
-                        loadPacks()
+        if (!hasCheckedStartupDedup) {
+            hasCheckedStartupDedup = true
+            val prefs = getSharedPreferences("sticker_maker_preferences", Context.MODE_PRIVATE)
+            val alreadyDeduped = prefs.getBoolean("has_completed_startup_dedup_v138", false)
+            if (!alreadyDeduped) {
+                prefs.edit().putBoolean("has_completed_startup_dedup_v138", true).apply()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val removed = StickerStorage.deduplicatePackStickers(this@MainActivity)
+                    if (removed > 0) {
+                        android.util.Log.i("MainActivity", "Startup dedup removed $removed duplicate stickers")
+                        withContext(Dispatchers.Main) {
+                            loadPacks()
+                        }
                     }
                 }
             }

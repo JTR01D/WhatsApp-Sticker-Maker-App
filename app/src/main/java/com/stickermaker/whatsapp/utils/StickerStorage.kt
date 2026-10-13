@@ -634,7 +634,6 @@ object StickerStorage {
      * (same payload or visual hash, different filename). Also cleans up orphaned files.
      * Returns the total number of duplicate sticker entries removed.
      */
-    @Synchronized
     fun deduplicatePackStickers(context: Context): Int {
         val packs = getAllPacks(context)
         var totalRemoved = 0
