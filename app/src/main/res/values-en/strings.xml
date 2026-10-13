@@ -1,0 +1,66 @@
+<resources>
+    <string name="app_name">WhatsApp Sticker Maker</string>
+    <string name="toolbar_title">Sticker Maker</string>
+    <string name="create_new_pack">Create Pack</string>
+    <string name="pack_name_hint">Pack Name</string>
+    <string name="publisher_hint">Creator / Author</string>
+    <string name="cancel">Cancel</string>
+    <string name="create">Create</string>
+    <string name="save">Save</string>
+    <string name="add_to_whatsapp">Add to WhatsApp</string>
+    <string name="added_to_whatsapp">Added to WhatsApp</string>
+    <string name="add_stickers">Add Stickers</string>
+    <string name="empty_packs_title">No sticker packs yet</string>
+    <string name="empty_packs_desc">Create your first pack and pick images from anywhere on your phone (Downloads, Gallery, etc.).</string>
+    <string name="empty_stickers_title">This pack is empty</string>
+    <string name="empty_stickers_desc">Tap \"Add Stickers\" to pick photos from your phone. You need at least 3 stickers to export to WhatsApp.</string>
+    <string name="stickers_count_format">%1$d / 30 stickers</string>
+    <string name="min_stickers_notice">Minimum 3 stickers required for WhatsApp</string>
+    <string name="delete_pack_confirm">Do you want to delete this sticker pack?</string>
+    <string name="delete_sticker_confirm">Do you want to delete this sticker?</string>
+    <string name="delete">Delete</string>
+    <string name="processing_images">Optimizing and converting images to WebP 512x512…</string>
+    <string name="success_stickers_added">Stickers added successfully</string>
+
+    <!-- Toolbar & Menu -->
+    <string name="menu_add_multiple">Add Multiple to WhatsApp</string>
+    <string name="menu_share_all">Export / Share (.zip)</string>
+    <string name="menu_more_options">More options</string>
+    <string name="options_title">Collection Options</string>
+    <string name="options_subtitle">Manage stickers and storage</string>
+    <string name="option_save_zip">Save to Device (.zip)</string>
+    <string name="option_save_zip_desc">Export a ZIP archive to your Downloads folder or local storage</string>
+    <string name="option_import_zip">Import Pack (.zip)</string>
+    <string name="option_import_zip_desc">Restore packs or add collections from ZIP archives</string>
+    <string name="option_language">Language / Idioma</string>
+    <string name="option_language_desc">Switch between Spanish and English</string>
+    <string name="option_about">About me</string>
+    <string name="option_about_desc">Developer, version &amp; app information</string>
+    <string name="option_delete_all">Delete All Packs</string>
+    <string name="option_delete_all_desc">Removes all created packs from the app (Irreversible)</string>
+    <string name="close">Close</string>
+
+    <!-- About Me Dialog -->
+    <string name="about_dialog_title">About me</string>
+    <string name="about_app_title">WhatsApp Sticker Maker</string>
+    <string name="about_developer">Developer</string>
+    <string name="about_version">Version</string>
+    <string name="about_developer_name">JTR01D</string>
+    <string name="about_description">Advanced tool to create, import, optimize and export animated and static sticker packs for WhatsApp.</string>
+    <string name="about_feat_performance">Optimized WebP Performance</string>
+    <string name="about_feat_performance_desc">Smart 512x512 compression with WhatsApp size limit compliance.</string>
+    <string name="about_feat_privacy">100% Local &amp; Private</string>
+    <string name="about_feat_privacy_desc">Your photos and stickers never leave your mobile device.</string>
+    <string name="about_feat_backup">Portable .ZIP Backups</string>
+    <string name="about_feat_backup_desc">Export and import your entire collection in a single tap.</string>
+    <string name="about_got_it">Got it</string>
+
+    <!-- Language Selector Dialog -->
+    <string name="lang_selector_title">Select Language</string>
+    <string name="lang_selector_subtitle">Choose your preferred app language</string>
+    <string name="lang_spanish">Español</string>
+    <string name="lang_spanish_sub">Spanish (Latin America / Spain)</string>
+    <string name="lang_english">English</string>
+    <string name="lang_english_sub">English (United States)</string>
+    <string name="lang_selected_badge">Active</string>
+</resources>

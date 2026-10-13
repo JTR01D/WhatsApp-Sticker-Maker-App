@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Bottom glass edge reflection / luminous rim -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#33FFFFFF" />
+        </shape>
+    </item>
+    <!-- Liquid glass body with depth refraction gradient -->
+    <item android:bottom="1.2dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#F21E293B"
+                android:centerColor="#E615202E"
+                android:endColor="#DA0F1724" />
+        </shape>
+    </item>
+</layer-list>

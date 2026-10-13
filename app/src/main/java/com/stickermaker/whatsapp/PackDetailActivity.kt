@@ -1,5 +1,6 @@
 package com.stickermaker.whatsapp
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -13,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import java.io.File
 import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
+import com.stickermaker.whatsapp.utils.LocaleHelper
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -76,6 +78,10 @@ class PackDetailActivity : AppCompatActivity() {
                 importZipFile(uri)
             }
         }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.applyLanguageContext(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

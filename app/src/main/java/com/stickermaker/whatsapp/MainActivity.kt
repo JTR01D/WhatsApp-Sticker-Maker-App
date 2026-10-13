@@ -17,14 +17,18 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.content.Context
 import com.stickermaker.whatsapp.databinding.ActivityMainBinding
+import com.stickermaker.whatsapp.databinding.DialogAboutMeBinding
 import com.stickermaker.whatsapp.databinding.DialogCreatePackBinding
 import com.stickermaker.whatsapp.databinding.DialogExportZipProgressBinding
 import com.stickermaker.whatsapp.databinding.DialogExportZipSuccessBinding
+import com.stickermaker.whatsapp.databinding.DialogLanguageSelectorBinding
 import com.stickermaker.whatsapp.databinding.DialogMainMoreOptionsBinding
 import com.stickermaker.whatsapp.databinding.DialogSelectPacksWhatsappBinding
 import com.stickermaker.whatsapp.databinding.ItemPackSelectBinding
 import com.stickermaker.whatsapp.model.StickerPack
+import com.stickermaker.whatsapp.utils.LocaleHelper
 import com.stickermaker.whatsapp.utils.StickerStorage
 import com.stickermaker.whatsapp.utils.WhatsAppChecker
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +92,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.applyLanguageContext(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -161,7 +169,26 @@ class MainActivity : AppCompatActivity() {
             launchZipPicker()
         }
 
-        // 3. Vaciar / Eliminar Todos los Paquetes
+        // 3. Selector de Idioma / Language
+        val currentLang = LocaleHelper.getLanguage(this)
+        optionsBinding.tvLanguageBadge.text = currentLang.uppercase()
+        optionsBinding.tvCurrentLanguage.text = if (currentLang == LocaleHelper.LANG_ES) {
+            getString(R.string.lang_spanish)
+        } else {
+            getString(R.string.lang_english)
+        }
+        optionsBinding.cardOptionLanguage.setOnClickListener {
+            dialog.dismiss()
+            showLanguageSelectorDialog()
+        }
+
+        // 4. Acerca de / About Me
+        optionsBinding.cardOptionAbout.setOnClickListener {
+            dialog.dismiss()
+            showAboutMeDialog()
+        }
+
+        // 5. Vaciar / Eliminar Todos los Paquetes
         optionsBinding.cardOptionDeleteAll.setOnClickListener {
             dialog.dismiss()
             confirmDeleteAllPacks()
@@ -169,6 +196,64 @@ class MainActivity : AppCompatActivity() {
 
         // Botón Cerrar
         optionsBinding.btnCloseOptions.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun showAboutMeDialog() {
+        val aboutBinding = DialogAboutMeBinding.inflate(layoutInflater)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(aboutBinding.root)
+            .create()
+        applyLiquidGlassDialog(dialog)
+
+        aboutBinding.tvAboutVersion.text = "v${BuildConfig.VERSION_NAME} • Build ${BuildConfig.VERSION_CODE}"
+        aboutBinding.btnAboutClose.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun showLanguageSelectorDialog() {
+        val langBinding = DialogLanguageSelectorBinding.inflate(layoutInflater)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(langBinding.root)
+            .create()
+        applyLiquidGlassDialog(dialog)
+
+        val currentLang = LocaleHelper.getLanguage(this)
+        if (currentLang == LocaleHelper.LANG_ES) {
+            langBinding.ivCheckSpanish.visibility = View.VISIBLE
+            langBinding.ivCheckEnglish.visibility = View.GONE
+        } else {
+            langBinding.ivCheckSpanish.visibility = View.GONE
+            langBinding.ivCheckEnglish.visibility = View.VISIBLE
+        }
+
+        langBinding.cardLangSpanish.setOnClickListener {
+            if (currentLang != LocaleHelper.LANG_ES) {
+                LocaleHelper.setLocale(this, LocaleHelper.LANG_ES)
+                dialog.dismiss()
+                recreate()
+            } else {
+                dialog.dismiss()
+            }
+        }
+
+        langBinding.cardLangEnglish.setOnClickListener {
+            if (currentLang != LocaleHelper.LANG_EN) {
+                LocaleHelper.setLocale(this, LocaleHelper.LANG_EN)
+                dialog.dismiss()
+                recreate()
+            } else {
+                dialog.dismiss()
+            }
+        }
+
+        langBinding.btnCancelLang.setOnClickListener {
             dialog.dismiss()
         }
 

@@ -1,0 +1,66 @@
+<resources>
+    <string name="app_name">Sticker Maker WhatsApp</string>
+    <string name="toolbar_title">Sticker Maker</string>
+    <string name="create_new_pack">Crear Paquete</string>
+    <string name="pack_name_hint">Nombre del Paquete</string>
+    <string name="publisher_hint">Creador / Autor</string>
+    <string name="cancel">Cancelar</string>
+    <string name="create">Crear</string>
+    <string name="save">Guardar</string>
+    <string name="add_to_whatsapp">Añadir a WhatsApp</string>
+    <string name="added_to_whatsapp">Añadido a WhatsApp</string>
+    <string name="add_stickers">Añadir Stickers</string>
+    <string name="empty_packs_title">No tienes paquetes de stickers</string>
+    <string name="empty_packs_desc">Crea tu primer paquete y selecciona imágenes desde cualquier carpeta de tu móvil (Descargas, Galería, etc.).</string>
+    <string name="empty_stickers_title">Este paquete está vacío</string>
+    <string name="empty_stickers_desc">Toca en \"Añadir Stickers\" para seleccionar fotos de tu móvil. Necesitas al menos 3 stickers para importarlo a WhatsApp.</string>
+    <string name="stickers_count_format">%1$d / 30 stickers</string>
+    <string name="min_stickers_notice">Mínimo 3 stickers requeridos para WhatsApp</string>
+    <string name="delete_pack_confirm">¿Deseas eliminar este paquete de stickers?</string>
+    <string name="delete_sticker_confirm">¿Deseas eliminar este sticker?</string>
+    <string name="delete">Eliminar</string>
+    <string name="processing_images">Optimizando y convirtiendo imágenes a WebP 512x512…</string>
+    <string name="success_stickers_added">Stickers agregados correctamente</string>
+
+    <!-- Toolbar & Menu -->
+    <string name="menu_add_multiple">Añadir Varios a WhatsApp</string>
+    <string name="menu_share_all">Exportar / Compartir (.zip)</string>
+    <string name="menu_more_options">Más opciones</string>
+    <string name="options_title">Opciones de la Colección</string>
+    <string name="options_subtitle">Gestión de stickers y almacenamiento</string>
+    <string name="option_save_zip">Guardar en Dispositivo (.zip)</string>
+    <string name="option_save_zip_desc">Exporta un archivo ZIP a tu carpeta Descargas o memoria local</string>
+    <string name="option_import_zip">Importar Paquete (.zip)</string>
+    <string name="option_import_zip_desc">Restaura paquetes o añade colecciones desde archivos ZIP</string>
+    <string name="option_language">Idioma / Language</string>
+    <string name="option_language_desc">Cambiar entre Español e Inglés</string>
+    <string name="option_about">Acerca de</string>
+    <string name="option_about_desc">Creador, versión e información de la app</string>
+    <string name="option_delete_all">Vaciar Todos los Paquetes</string>
+    <string name="option_delete_all_desc">Elimina todos los paquetes creados de la app (Irreversible)</string>
+    <string name="close">Cerrar</string>
+
+    <!-- About Me Dialog -->
+    <string name="about_dialog_title">Acerca de</string>
+    <string name="about_app_title">WhatsApp Sticker Maker</string>
+    <string name="about_developer">Desarrollador</string>
+    <string name="about_version">Versión</string>
+    <string name="about_developer_name">JTR01D</string>
+    <string name="about_description">Potente creador y optimizador de stickers para WhatsApp con soporte para stickers estáticos y animados.</string>
+    <string name="about_feat_performance">Rendimiento WebP Optimizado</string>
+    <string name="about_feat_performance_desc">Compresión inteligente a 512x512 respetando los límites de WhatsApp.</string>
+    <string name="about_feat_privacy">100% Local &amp; Privado</string>
+    <string name="about_feat_privacy_desc">Tus fotos y stickers nunca salen de tu dispositivo móvil.</string>
+    <string name="about_feat_backup">Copias de Seguridad Portables</string>
+    <string name="about_feat_backup_desc">Exporta e importa tu colección completa en archivos .ZIP.</string>
+    <string name="about_got_it">Entendido</string>
+
+    <!-- Language Selector Dialog -->
+    <string name="lang_selector_title">Seleccionar Idioma</string>
+    <string name="lang_selector_subtitle">Elige el idioma de la aplicación</string>
+    <string name="lang_spanish">Español</string>
+    <string name="lang_spanish_sub">Español (Latinoamérica / España)</string>
+    <string name="lang_english">English</string>
+    <string name="lang_english_sub">English (United States)</string>
+    <string name="lang_selected_badge">Activo</string>
+</resources>

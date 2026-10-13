@@ -4,16 +4,16 @@
     <item
         android:id="@+id/action_add_multiple_whatsapp"
         android:icon="@drawable/ic_whatsapp"
-        android:title="Añadir Varios a WhatsApp"
+        android:title="@string/menu_add_multiple"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/action_share_all_zip"
         android:icon="@drawable/ic_share"
-        android:title="Exportar / Compartir Colección (.zip)"
+        android:title="@string/menu_share_all"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/action_more_options"
         android:icon="@drawable/ic_more_vert"
-        android:title="Más opciones"
+        android:title="@string/menu_more_options"
         app:showAsAction="always" />
 </menu>
