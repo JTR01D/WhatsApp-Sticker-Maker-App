@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_liquid_glass_dialog"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -15,8 +16,8 @@
         android:orientation="horizontal">
 
         <FrameLayout
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
             android:background="@drawable/bg_dialog_icon_squircle">
 
             <ImageView
@@ -114,7 +115,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:background="@drawable/bg_dialog_info_banner"
+        android:background="@drawable/bg_liquid_glass_banner"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="12dp">

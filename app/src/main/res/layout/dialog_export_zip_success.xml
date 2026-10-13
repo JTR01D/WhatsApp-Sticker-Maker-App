@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_liquid_glass_dialog"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -15,13 +16,13 @@
         android:orientation="horizontal">
 
         <FrameLayout
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:background="@drawable/bg_dialog_icon_squircle">
 
             <ImageView
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:layout_gravity="center"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_check"
@@ -41,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:text="¡Colección ZIP Lista!"
                 android:textColor="@color/text_primary"
-                android:textSize="18sp"
+                android:textSize="19sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -57,12 +58,12 @@
 
     </LinearLayout>
 
-    <!-- File info card -->
+    <!-- File info glass card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:background="@drawable/bg_dialog_info_banner"
+        android:background="@drawable/bg_liquid_glass_banner"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="12dp">
@@ -72,7 +73,7 @@
             android:layout_height="24dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_archive"
-            app:tint="@color/text_primary" />
+            app:tint="@color/accent_whatsapp" />
 
         <TextView
             android:id="@+id/tvZipFileName"
@@ -96,56 +97,59 @@
         android:textColor="@color/text_secondary"
         android:textSize="13sp" />
 
-    <!-- Action 1: Save directly to Downloads -->
+    <!-- Action 1: Save directly to Downloads with Primary Liquid Glass -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSaveToDownloads"
-        style="@style/Widget.Material3.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:backgroundTint="@color/btn_whatsapp_bg"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_liquid_glass_button_primary"
         android:paddingVertical="12dp"
         android:text="Guardar en Descargas (Dispositivo)"
         android:textColor="@color/btn_whatsapp_text"
         android:textSize="14sp"
         android:textStyle="bold"
-        app:cornerRadius="12dp"
+        app:backgroundTint="@null"
+        app:cornerRadius="18dp"
         app:icon="@drawable/ic_save"
         app:iconGravity="textStart"
         app:iconTint="@color/btn_whatsapp_text" />
 
-    <!-- Action 2: Choose folder to save -->
+    <!-- Action 2: Choose folder with Secondary Liquid Glass -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSaveCustomFolder"
-        style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:paddingVertical="10dp"
+        android:layout_marginTop="9dp"
+        android:background="@drawable/bg_liquid_glass_button_secondary"
+        android:paddingVertical="11dp"
         android:text="Elegir otra carpeta para guardar..."
-        android:textColor="@color/text_primary"
+        android:textColor="@color/white"
         android:textSize="13sp"
-        app:cornerRadius="12dp"
+        android:textStyle="bold"
+        app:backgroundTint="@null"
+        app:cornerRadius="18dp"
         app:icon="@drawable/ic_folder"
         app:iconGravity="textStart"
-        app:iconTint="@color/text_primary"
-        app:strokeColor="@color/card_stroke" />
+        app:iconTint="@color/white" />
 
-    <!-- Action 3: Share via Apps -->
+    <!-- Action 3: Share via Apps with Secondary Liquid Glass -->
     <com.google.android.material.button.MaterialButton
-        style="@style/Widget.Material3.Button.TonalButton"
         android:id="@+id/btnShareViaApps"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:paddingVertical="10dp"
+        android:layout_marginTop="9dp"
+        android:background="@drawable/bg_liquid_glass_button_secondary"
+        android:paddingVertical="11dp"
         android:text="Compartir por WhatsApp u otras Apps"
-        android:textColor="@color/text_primary"
+        android:textColor="@color/white"
         android:textSize="13sp"
-        app:cornerRadius="12dp"
+        android:textStyle="bold"
+        app:backgroundTint="@null"
+        app:cornerRadius="18dp"
         app:icon="@drawable/ic_share"
         app:iconGravity="textStart"
-        app:iconTint="@color/text_primary" />
+        app:iconTint="@color/white" />
 
     <!-- Close button -->
     <com.google.android.material.button.MaterialButton
@@ -154,7 +158,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="6dp"
         android:text="Cerrar"
         android:textColor="@color/text_secondary"
         android:textSize="13sp" />

@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,6 +75,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+    private fun applyLiquidGlassDialog(dialog: androidx.appcompat.app.AlertDialog) {
+        dialog.window?.let { window ->
+            window.setBackgroundDrawableResource(android.R.color.transparent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                window.attributes = window.attributes.apply {
+                    blurBehindRadius = 40
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -376,6 +389,7 @@ class MainActivity : AppCompatActivity() {
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogBinding.root)
             .create()
+        applyLiquidGlassDialog(dialog)
 
         dialogBinding.cbSelectAll.setOnClickListener {
             if (dialogBinding.cbSelectAll.isChecked) {
@@ -530,6 +544,7 @@ class MainActivity : AppCompatActivity() {
             .setView(progressBinding.root)
             .setCancelable(false)
             .create()
+        applyLiquidGlassDialog(progressDialog)
         progressDialog.show()
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -566,6 +581,7 @@ class MainActivity : AppCompatActivity() {
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(successBinding.root)
             .create()
+        applyLiquidGlassDialog(dialog)
 
         // 1. Guardar directo en Descargas del dispositivo
         successBinding.btnSaveToDownloads.setOnClickListener {
@@ -718,6 +734,7 @@ class MainActivity : AppCompatActivity() {
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogBinding.root)
             .create()
+        applyLiquidGlassDialog(dialog)
 
         dialogBinding.btnCancel.setOnClickListener {
             dialog.dismiss()

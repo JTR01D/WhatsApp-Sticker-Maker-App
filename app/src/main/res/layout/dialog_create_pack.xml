@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_liquid_glass_dialog"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -81,13 +82,13 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Publisher / Author Field -->
+    <!-- Publisher Field -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilPublisher"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="12dp"
         android:hint="@string/publisher_hint"
         app:boxCornerRadiusBottomEnd="16dp"
         app:boxCornerRadiusBottomStart="16dp"
@@ -96,7 +97,7 @@
         app:boxStrokeColor="@color/accent_whatsapp"
         app:endIconMode="clear_text"
         app:endIconTint="@color/text_secondary"
-        app:helperText="Nombre o apodo que aparecerá en WhatsApp"
+        app:helperText="Nombre del autor o creador del paquete"
         app:helperTextTextColor="@color/text_secondary"
         app:hintTextColor="@color/accent_whatsapp"
         app:startIconDrawable="@drawable/ic_person"
@@ -113,12 +114,12 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Info Banner Tip -->
+    <!-- Info Banner (Glass style) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:background="@drawable/bg_dialog_info_banner"
+        android:background="@drawable/bg_liquid_glass_banner"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="12dp">
@@ -142,7 +143,7 @@
 
     </LinearLayout>
 
-    <!-- Action Buttons -->
+    <!-- Action Buttons with Liquid Glass -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -152,33 +153,35 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCancel"
-            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:layout_weight="1"
+            android:background="@drawable/bg_liquid_glass_button_secondary"
             android:text="@string/cancel"
-            android:textColor="@color/text_secondary"
+            android:textColor="@color/white"
             android:textSize="14sp"
-            app:cornerRadius="14dp" />
+            android:textStyle="bold"
+            app:backgroundTint="@null"
+            app:cornerRadius="16dp" />
 
         <View
-            android:layout_width="8dp"
+            android:layout_width="10dp"
             android:layout_height="1dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCreatePack"
-            style="@style/Widget.Material3.Button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:layout_weight="1.6"
-            android:backgroundTint="@color/btn_whatsapp_bg"
+            android:background="@drawable/bg_liquid_glass_button_primary"
             android:text="Crear Paquete"
             android:textColor="@color/btn_whatsapp_text"
             android:textSize="14sp"
             android:textStyle="bold"
-            app:cornerRadius="14dp"
+            app:backgroundTint="@null"
+            app:cornerRadius="16dp"
             app:icon="@drawable/ic_add"
             app:iconGravity="textStart"
             app:iconTint="@color/btn_whatsapp_text" />
