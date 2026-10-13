@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#4DFFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="28dp" />
+            <!-- Translucent acrylic frosted gradient: luminous emerald into translucent deep teal -->
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#EA00D992"
+                android:centerColor="#D600A884"
+                android:endColor="#BF00755C" />
+            <!-- Acrylic light refraction rim highlight -->
+            <stroke
+                android:width="1.5dp"
+                android:color="#80FFFFFF" />
+        </shape>
+    </item>
+</ripple>

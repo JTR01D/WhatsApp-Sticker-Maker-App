@@ -10,6 +10,13 @@
     <color name="btn_whatsapp_bg">#008069</color>
     <color name="btn_whatsapp_text">#FFFFFF</color>
 
+    <!-- Sticker Pack Item Action Buttons (Added vs Add Distinction) -->
+    <color name="btn_pack_add_bg">#008069</color>
+    <color name="btn_pack_add_text">#FFFFFF</color>
+    <color name="btn_pack_added_bg">#E8F5E9</color>
+    <color name="btn_pack_added_stroke">#A5D6A7</color>
+    <color name="btn_pack_added_text">#1B5E20</color>
+
     <!-- Surfaces & Backgrounds -->
     <color name="background_light">#F0F2F5</color>
     <color name="surface_light">#FFFFFF</color>

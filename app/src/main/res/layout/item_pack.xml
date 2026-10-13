@@ -161,14 +161,14 @@
                 android:id="@+id/btnAddToWhatsApp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/btn_whatsapp_bg"
+                android:backgroundTint="@color/btn_pack_add_bg"
                 android:text="@string/add_to_whatsapp"
-                android:textColor="@color/btn_whatsapp_text"
+                android:textColor="@color/btn_pack_add_text"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 app:cornerRadius="20dp"
                 app:icon="@drawable/ic_whatsapp"
-                app:iconTint="@color/btn_whatsapp_text" />
+                app:iconTint="@color/btn_pack_add_text" />
 
         </LinearLayout>
 

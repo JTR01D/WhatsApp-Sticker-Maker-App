@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -89,12 +90,23 @@ class StickerPackAdapter(
                 binding.btnAddToWhatsApp.text = context.getString(R.string.added_to_whatsapp)
                 binding.btnAddToWhatsApp.setIconResource(R.drawable.ic_check)
                 binding.btnAddToWhatsApp.isEnabled = false
-                binding.btnAddToWhatsApp.setBackgroundColor(ContextCompat.getColor(context, R.color.badge_success))
+                // Tonal chip style: darker/subtle tinted background, border stroke, soft mint text & icon
+                binding.btnAddToWhatsApp.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.btn_pack_added_bg))
+                binding.btnAddToWhatsApp.setStrokeColor(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.btn_pack_added_stroke)))
+                binding.btnAddToWhatsApp.strokeWidth = (context.resources.displayMetrics.density * 1.2f).toInt()
+                val addedColor = ContextCompat.getColor(context, R.color.btn_pack_added_text)
+                binding.btnAddToWhatsApp.setTextColor(addedColor)
+                binding.btnAddToWhatsApp.iconTint = ColorStateList.valueOf(addedColor)
             } else {
                 binding.btnAddToWhatsApp.text = context.getString(R.string.add_to_whatsapp)
                 binding.btnAddToWhatsApp.setIconResource(R.drawable.ic_whatsapp)
                 binding.btnAddToWhatsApp.isEnabled = true
-                binding.btnAddToWhatsApp.setBackgroundColor(ContextCompat.getColor(context, R.color.accent_whatsapp))
+                // Vibrant action style: primary WhatsApp green, borderless, crisp white text & icon
+                binding.btnAddToWhatsApp.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.btn_pack_add_bg))
+                binding.btnAddToWhatsApp.strokeWidth = 0
+                val addColor = ContextCompat.getColor(context, R.color.btn_pack_add_text)
+                binding.btnAddToWhatsApp.setTextColor(addColor)
+                binding.btnAddToWhatsApp.iconTint = ColorStateList.valueOf(addColor)
             }
 
             if (isSelectionMode) {

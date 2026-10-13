@@ -424,6 +424,7 @@ class PackDetailActivity : AppCompatActivity() {
 
         // WhatsApp status & minimum 3 stickers validation
         val stickerCount = pack.stickers.size
+        val isWhitelisted = WhatsAppChecker.isPackWhitelisted(this, pack.identifier)
         when {
             stickerCount < 3 -> {
                 val needed = 3 - stickerCount
@@ -432,13 +433,39 @@ class PackDetailActivity : AppCompatActivity() {
                 binding.layoutStatusBadge.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.badge_container))
                 binding.btnDetailAddToWhatsApp.isEnabled = false
                 binding.btnDetailAddToWhatsApp.alpha = 0.5f
+                binding.btnDetailAddToWhatsApp.text = getString(R.string.add_to_whatsapp)
+                binding.btnDetailAddToWhatsApp.setIconResource(R.drawable.ic_whatsapp)
+                binding.btnDetailAddToWhatsApp.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.btn_pack_add_bg))
+                binding.btnDetailAddToWhatsApp.strokeWidth = 0
+            }
+            isWhitelisted -> {
+                binding.tvDetailStatus.text = "✓ Paquete añadido a WhatsApp"
+                binding.tvDetailStatus.setTextColor(ContextCompat.getColor(this, R.color.btn_pack_added_text))
+                binding.layoutStatusBadge.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.btn_pack_added_bg))
+                binding.btnDetailAddToWhatsApp.text = getString(R.string.added_to_whatsapp)
+                binding.btnDetailAddToWhatsApp.setIconResource(R.drawable.ic_check)
+                binding.btnDetailAddToWhatsApp.isEnabled = false
+                binding.btnDetailAddToWhatsApp.alpha = 1.0f
+                binding.btnDetailAddToWhatsApp.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.btn_pack_added_bg))
+                binding.btnDetailAddToWhatsApp.setStrokeColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.btn_pack_added_stroke)))
+                binding.btnDetailAddToWhatsApp.strokeWidth = (resources.displayMetrics.density * 1.2f).toInt()
+                val addedColor = ContextCompat.getColor(this, R.color.btn_pack_added_text)
+                binding.btnDetailAddToWhatsApp.setTextColor(addedColor)
+                binding.btnDetailAddToWhatsApp.iconTint = ColorStateList.valueOf(addedColor)
             }
             else -> {
                 binding.tvDetailStatus.text = "✓ Listo para añadir a WhatsApp"
                 binding.tvDetailStatus.setTextColor(ContextCompat.getColor(this, R.color.badge_success))
                 binding.layoutStatusBadge.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.badge_success_container))
+                binding.btnDetailAddToWhatsApp.text = getString(R.string.add_to_whatsapp)
+                binding.btnDetailAddToWhatsApp.setIconResource(R.drawable.ic_whatsapp)
                 binding.btnDetailAddToWhatsApp.isEnabled = true
                 binding.btnDetailAddToWhatsApp.alpha = 1.0f
+                binding.btnDetailAddToWhatsApp.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.btn_pack_add_bg))
+                binding.btnDetailAddToWhatsApp.strokeWidth = 0
+                val addColor = ContextCompat.getColor(this, R.color.btn_pack_add_text)
+                binding.btnDetailAddToWhatsApp.setTextColor(addColor)
+                binding.btnDetailAddToWhatsApp.iconTint = ColorStateList.valueOf(addColor)
             }
         }
 
