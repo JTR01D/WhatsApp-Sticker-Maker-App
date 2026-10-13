@@ -3,6 +3,7 @@ package com.stickermaker.whatsapp
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -30,9 +31,10 @@ class StickerPackAdapter(
 
     val selectedPackIds = mutableSetOf<String>()
 
-    fun selectAll() {
+    fun selectAll(context: android.content.Context) {
         selectedPackIds.clear()
-        selectedPackIds.addAll(packs.map { it.identifier })
+        val selectable = packs.filter { !WhatsAppChecker.isPackWhitelisted(context, it.identifier) }
+        selectedPackIds.addAll(selectable.map { it.identifier })
         onSelectionChanged(selectedPackIds.size)
         notifyDataSetChanged()
     }
@@ -96,25 +98,48 @@ class StickerPackAdapter(
             }
 
             if (isSelectionMode) {
-                binding.cbSelectPack.visibility = View.VISIBLE
-                binding.cbSelectPack.isChecked = selectedPackIds.contains(pack.identifier)
                 binding.btnDeletePack.visibility = View.GONE
-                binding.btnAddToWhatsApp.visibility = View.GONE
 
-                val toggleSelect = {
-                    if (selectedPackIds.contains(pack.identifier)) {
-                        selectedPackIds.remove(pack.identifier)
-                    } else {
-                        selectedPackIds.add(pack.identifier)
+                if (isWhitelisted) {
+                    binding.root.alpha = 0.55f
+                    binding.cbSelectPack.visibility = View.VISIBLE
+                    binding.cbSelectPack.isEnabled = false
+                    binding.cbSelectPack.isChecked = false
+                    binding.cbSelectPack.alpha = 0.35f
+                    binding.btnAddToWhatsApp.visibility = View.VISIBLE
+                    binding.btnAddToWhatsApp.isEnabled = false
+
+                    val showAlreadyAddedToast = {
+                        Toast.makeText(context, "Este paquete ya está añadido a WhatsApp", Toast.LENGTH_SHORT).show()
                     }
+                    binding.cbSelectPack.setOnClickListener { showAlreadyAddedToast() }
+                    binding.root.setOnClickListener { showAlreadyAddedToast() }
+                } else {
+                    binding.root.alpha = 1.0f
+                    binding.cbSelectPack.visibility = View.VISIBLE
+                    binding.cbSelectPack.isEnabled = true
+                    binding.cbSelectPack.alpha = 1.0f
                     binding.cbSelectPack.isChecked = selectedPackIds.contains(pack.identifier)
-                    onSelectionChanged(selectedPackIds.size)
-                }
+                    binding.btnAddToWhatsApp.visibility = View.GONE
 
-                binding.cbSelectPack.setOnClickListener { toggleSelect() }
-                binding.root.setOnClickListener { toggleSelect() }
+                    val toggleSelect = {
+                        if (selectedPackIds.contains(pack.identifier)) {
+                            selectedPackIds.remove(pack.identifier)
+                        } else {
+                            selectedPackIds.add(pack.identifier)
+                        }
+                        binding.cbSelectPack.isChecked = selectedPackIds.contains(pack.identifier)
+                        onSelectionChanged(selectedPackIds.size)
+                    }
+
+                    binding.cbSelectPack.setOnClickListener { toggleSelect() }
+                    binding.root.setOnClickListener { toggleSelect() }
+                }
             } else {
+                binding.root.alpha = 1.0f
                 binding.cbSelectPack.visibility = View.GONE
+                binding.cbSelectPack.isEnabled = true
+                binding.cbSelectPack.alpha = 1.0f
                 binding.btnDeletePack.visibility = View.VISIBLE
                 binding.btnAddToWhatsApp.visibility = View.VISIBLE
 
@@ -123,10 +148,15 @@ class StickerPackAdapter(
                 binding.btnDeletePack.setOnClickListener { onDeleteClick(pack) }
 
                 binding.root.setOnLongClickListener {
-                    isSelectionMode = true
-                    selectedPackIds.add(pack.identifier)
-                    onSelectionChanged(selectedPackIds.size)
-                    true
+                    if (isWhitelisted) {
+                        Toast.makeText(context, "Este paquete ya está añadido a WhatsApp", Toast.LENGTH_SHORT).show()
+                        true
+                    } else {
+                        isSelectionMode = true
+                        selectedPackIds.add(pack.identifier)
+                        onSelectionChanged(selectedPackIds.size)
+                        true
+                    }
                 }
             }
         }

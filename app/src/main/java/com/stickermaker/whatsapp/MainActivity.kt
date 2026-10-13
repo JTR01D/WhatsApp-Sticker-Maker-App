@@ -149,10 +149,11 @@ class MainActivity : AppCompatActivity() {
 
         // Selection Bar Listeners
         binding.btnSelectAllPacks.setOnClickListener {
-            if (adapter.selectedPackIds.size == packsList.size) {
+            val selectableCount = packsList.count { !WhatsAppChecker.isPackWhitelisted(this, it.identifier) }
+            if (adapter.selectedPackIds.size >= selectableCount && selectableCount > 0) {
                 adapter.deselectAll()
             } else {
-                adapter.selectAll()
+                adapter.selectAll(this)
             }
         }
 
@@ -162,10 +163,12 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnAddSelectedToWhatsApp.setOnClickListener {
             val selected = packsList.filter { adapter.selectedPackIds.contains(it.identifier) }
-            val validToAdd = selected.filter { it.stickers.size in 3..30 }
+            val validToAdd = selected.filter {
+                !WhatsAppChecker.isPackWhitelisted(this, it.identifier) && it.stickers.size in 3..30
+            }
 
             if (validToAdd.isEmpty()) {
-                Toast.makeText(this, "Selecciona paquetes con al menos 3 stickers", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Selecciona paquetes con al menos 3 stickers que no estén ya en WhatsApp", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -182,13 +185,14 @@ class MainActivity : AppCompatActivity() {
         if (adapter.isSelectionMode) {
             binding.cardPacksSelectionBar.visibility = View.VISIBLE
             binding.fabCreatePack.visibility = View.GONE
-            binding.tvSelectedPacksCount.text = "$selectedCount seleccionados"
+            binding.tvSelectedPacksCount.text = if (selectedCount == 1) "1 seleccionado" else "$selectedCount seleccionados"
             binding.btnAddSelectedToWhatsApp.isEnabled = selectedCount > 0
             binding.btnAddSelectedToWhatsApp.alpha = if (selectedCount > 0) 1.0f else 0.5f
             binding.btnDeleteSelectedPacks.isEnabled = selectedCount > 0
             binding.btnDeleteSelectedPacks.alpha = if (selectedCount > 0) 1.0f else 0.5f
 
-            if (selectedCount == packsList.size && packsList.isNotEmpty()) {
+            val selectableCount = packsList.count { !WhatsAppChecker.isPackWhitelisted(this, it.identifier) }
+            if (selectedCount >= selectableCount && selectableCount > 0) {
                 binding.btnSelectAllPacks.text = "Ninguno"
             } else {
                 binding.btnSelectAllPacks.text = "Todos"
@@ -262,15 +266,25 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        val pendingPacks = readyPacks.filter { !WhatsAppChecker.isPackWhitelisted(this, it.identifier) }
+        if (pendingPacks.isEmpty()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("¡Todo al día! 🎉")
+                .setMessage("Todos tus paquetes con al menos 3 stickers ya están añadidos a WhatsApp.")
+                .setPositiveButton("Aceptar", null)
+                .show()
+            return
+        }
+
         val dialogBinding = DialogSelectPacksWhatsappBinding.inflate(layoutInflater)
-        val selectedIds = readyPacks.map { it.identifier }.toMutableSet()
+        val selectedIds = pendingPacks.map { it.identifier }.toMutableSet()
 
         fun updateCounter() {
-            dialogBinding.tvSelectedCounter.text = "${selectedIds.size} / ${readyPacks.size} seleccionados"
+            dialogBinding.tvSelectedCounter.text = "${selectedIds.size} / ${pendingPacks.size} seleccionados"
             dialogBinding.btnConfirmAddSequential.text = "🚀 Añadir (${selectedIds.size}) a WhatsApp Seguidamente"
             dialogBinding.btnConfirmAddSequential.isEnabled = selectedIds.isNotEmpty()
             dialogBinding.btnConfirmAddSequential.alpha = if (selectedIds.isNotEmpty()) 1.0f else 0.5f
-            dialogBinding.cbSelectAll.isChecked = selectedIds.size == readyPacks.size
+            dialogBinding.cbSelectAll.isChecked = selectedIds.size == pendingPacks.size && pendingPacks.isNotEmpty()
         }
 
         dialogBinding.recyclerViewSelectPacks.layoutManager = LinearLayoutManager(this)
@@ -292,9 +306,36 @@ class MainActivity : AppCompatActivity() {
                 if (isWhitelisted) {
                     itemBinding.tvPackStatus.text = "Ya en WhatsApp"
                     itemBinding.tvPackStatus.setTextColor(getColor(R.color.badge_success))
+                    itemBinding.cbSelect.isEnabled = false
+                    itemBinding.cbSelect.isChecked = false
+                    itemBinding.cbSelect.alpha = 0.35f
+                    itemBinding.root.alpha = 0.55f
+
+                    val alreadyAdded = {
+                        Toast.makeText(this@MainActivity, "Este paquete ya está añadido a WhatsApp", Toast.LENGTH_SHORT).show()
+                    }
+                    itemBinding.cbSelect.setOnClickListener { alreadyAdded() }
+                    itemBinding.root.setOnClickListener { alreadyAdded() }
                 } else {
                     itemBinding.tvPackStatus.text = "Listo para añadir"
                     itemBinding.tvPackStatus.setTextColor(getColor(R.color.accent_whatsapp))
+                    itemBinding.cbSelect.isEnabled = true
+                    itemBinding.cbSelect.alpha = 1.0f
+                    itemBinding.root.alpha = 1.0f
+                    itemBinding.cbSelect.isChecked = selectedIds.contains(pack.identifier)
+
+                    val toggle = {
+                        if (selectedIds.contains(pack.identifier)) {
+                            selectedIds.remove(pack.identifier)
+                        } else {
+                            selectedIds.add(pack.identifier)
+                        }
+                        itemBinding.cbSelect.isChecked = selectedIds.contains(pack.identifier)
+                        updateCounter()
+                    }
+
+                    itemBinding.cbSelect.setOnClickListener { toggle() }
+                    itemBinding.root.setOnClickListener { toggle() }
                 }
 
                 if (pack.trayImageFile.isNotEmpty()) {
@@ -307,21 +348,6 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     itemBinding.imgTrayIcon.setImageResource(R.drawable.ic_sticker_pack)
                 }
-
-                itemBinding.cbSelect.isChecked = selectedIds.contains(pack.identifier)
-
-                val toggle = {
-                    if (selectedIds.contains(pack.identifier)) {
-                        selectedIds.remove(pack.identifier)
-                    } else {
-                        selectedIds.add(pack.identifier)
-                    }
-                    itemBinding.cbSelect.isChecked = selectedIds.contains(pack.identifier)
-                    updateCounter()
-                }
-
-                itemBinding.cbSelect.setOnClickListener { toggle() }
-                itemBinding.root.setOnClickListener { toggle() }
             }
 
             override fun getItemCount(): Int = readyPacks.size
@@ -335,7 +361,7 @@ class MainActivity : AppCompatActivity() {
 
         dialogBinding.cbSelectAll.setOnClickListener {
             if (dialogBinding.cbSelectAll.isChecked) {
-                selectedIds.addAll(readyPacks.map { it.identifier })
+                selectedIds.addAll(pendingPacks.map { it.identifier })
             } else {
                 selectedIds.clear()
             }
