@@ -4,7 +4,9 @@
 # ==============================================================================
 
 param(
-    [string]$ApkPath = ""
+    [string]$ApkPath = "",
+    [switch]$DownloadLatest = $false,
+    [switch]$AutoLaunch = $false
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -64,14 +66,21 @@ $targetDevice = $connectedDevices[0]
 Write-Host "[OK] Dispositivo detectado: " -ForegroundColor Gray -NoNewline
 Write-Host $targetDevice -ForegroundColor Green
 
-# 3. Localizar el archivo APK, ZIP o carpeta extraida mas reciente
+# 3. Localizar o Descargar el archivo APK
 $sourceFile = $null
+$officialDownloadUrl = "https://github.com/JTR01D/WhatsApp-Sticker-Maker-App/releases/download/latest/WhatsAppStickerMaker.apk"
+$destPath = "$env:USERPROFILE\Downloads\WhatsAppStickerMaker.apk"
 
 if ($ApkPath -and (Test-Path $ApkPath)) {
     $sourceFile = Get-Item $ApkPath
+} elseif ($DownloadLatest) {
+    Write-Host ""
+    Write-Host "[*] Descargando la compilacion mas reciente desde GitHub Releases..." -ForegroundColor Cyan
+    Invoke-WebRequest -Uri $officialDownloadUrl -OutFile $destPath
+    $sourceFile = Get-Item $destPath
 } else {
     Write-Host ""
-    Write-Host "[*] Buscando la compilacion mas reciente en Descargas..." -ForegroundColor Cyan
+    Write-Host "[*] Buscando versiones disponibles en Descargas..." -ForegroundColor Cyan
     $downloadsDir = "$env:USERPROFILE\Downloads"
     $recentFiles = Get-ChildItem -Path $downloadsDir | Where-Object {
         ($_.Name -like "*WhatsAppStickerMaker*" -or $_.Name -like "app-debug*.apk") -and
@@ -79,22 +88,23 @@ if ($ApkPath -and (Test-Path $ApkPath)) {
     } | Sort-Object LastWriteTime -Descending
 
     if ($recentFiles -and $recentFiles.Count -gt 0) {
-        $sourceFile = $recentFiles[0]
-    }
-}
-
-if (-not $sourceFile) {
-    Write-Host "[!] No se encontro ningun archivo reciente de WhatsApp Sticker Maker en Descargas." -ForegroundColor Yellow
-    $confirmDownload = Read-Host "Deseas descargar la ultima version publica desde GitHub Releases ahora mismo? (s/n)"
-    if ($confirmDownload -match "^[sSyY]") {
-        $downloadUrl = "https://github.com/JTR01D/WhatsApp-Sticker-Maker-App/releases/latest/download/WhatsAppStickerMaker.apk"
-        $destPath = "$env:USERPROFILE\Downloads\WhatsAppStickerMaker.apk"
-        Write-Host "[*] Descargando desde GitHub: $downloadUrl ..." -ForegroundColor Cyan
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $destPath
-        $sourceFile = Get-Item $destPath
+        $localFile = $recentFiles[0]
+        Write-Host ""
+        Write-Host "Selecciona una opcion de origen:" -ForegroundColor Yellow
+        Write-Host " [1] Descargar la compilacion mas reciente desde GitHub Releases (Recomendado)" -ForegroundColor Green
+        Write-Host " [2] Usar archivo local encontrado: $($localFile.Name) (Modificado: $($localFile.LastWriteTime))" -ForegroundColor Cyan
+        $choice = Read-Host "Ingresa tu opcion (1 o 2, Enter para 1)"
+        if ($choice -eq "2") {
+            $sourceFile = $localFile
+        } else {
+            Write-Host "[*] Descargando desde GitHub: $officialDownloadUrl ..." -ForegroundColor Cyan
+            Invoke-WebRequest -Uri $officialDownloadUrl -OutFile $destPath
+            $sourceFile = Get-Item $destPath
+        }
     } else {
-        Write-Host "Operacion cancelada." -ForegroundColor Yellow
-        exit 1
+        Write-Host "[*] No se encontraron archivos locales. Descargando la ultima version desde GitHub Releases..." -ForegroundColor Cyan
+        Invoke-WebRequest -Uri $officialDownloadUrl -OutFile $destPath
+        $sourceFile = Get-Item $destPath
     }
 }
 
@@ -207,12 +217,17 @@ if ($installOutput -match "Success") {
         }
     }
 
-    # Preguntar si desea abrir la app
-    Write-Host ""
-    $abrirApp = Read-Host "Deseas abrir la aplicacion ahora en tu telefono? (s/n)"
-    if ($abrirApp -match "^[sSyY]") {
+    # Abrir aplicacion
+    if ($AutoLaunch) {
         & $adb -s $targetDevice shell am start -n com.stickermaker.whatsapp.debug/com.stickermaker.whatsapp.MainActivity | Out-Null
         Write-Host "[OK] Aplicacion iniciada en pantalla." -ForegroundColor Green
+    } else {
+        Write-Host ""
+        $abrirApp = Read-Host "Deseas abrir la aplicacion ahora en tu telefono? (s/n)"
+        if ($abrirApp -match "^[sSyY]") {
+            & $adb -s $targetDevice shell am start -n com.stickermaker.whatsapp.debug/com.stickermaker.whatsapp.MainActivity | Out-Null
+            Write-Host "[OK] Aplicacion iniciada en pantalla." -ForegroundColor Green
+        }
     }
 } else {
     Write-Host ""
