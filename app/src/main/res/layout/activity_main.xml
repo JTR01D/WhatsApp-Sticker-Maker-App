@@ -112,30 +112,167 @@
 
     </FrameLayout>
 
-    <!-- FAB to Create Pack with Acrylic Glassmorphic Effect -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/fabCreatePack"
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="20dp"
-        android:background="@drawable/bg_acrylic_fab"
-        app:backgroundTint="@null"
-        android:elevation="8dp"
-        android:stateListAnimator="@null"
-        android:paddingStart="20dp"
-        android:paddingEnd="24dp"
-        android:text="@string/create_new_pack"
-        android:textColor="@color/white"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        app:cornerRadius="28dp"
-        app:icon="@drawable/ic_add"
-        app:iconGravity="textStart"
-        app:iconPadding="8dp"
-        app:iconSize="22dp"
-        app:iconTint="@color/white"
-        app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior" />
+    <!-- Floating Bottom Navigation Dock (DJI Mimo Style) -->
+    <LinearLayout
+        android:id="@+id/layoutDjiBottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="20dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- Main Navigation Capsule -->
+        <LinearLayout
+            android:id="@+id/cardDjiDock"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_dji_floating_dock"
+            android:elevation="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="6dp">
+
+            <!-- Tab 1: Mis Paquetes (Inicio) -->
+            <FrameLayout
+                android:id="@+id/tabDjiHome"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <View
+                    android:id="@+id/indicatorDjiHome"
+                    android:layout_width="52dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_dji_tab_indicator"
+                    android:visibility="visible" />
+
+                <ImageView
+                    android:id="@+id/iconDjiHome"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Inicio"
+                    android:src="@drawable/ic_home"
+                    app:tint="@color/white" />
+            </FrameLayout>
+
+            <!-- Tab 2: Stickers de WhatsApp -->
+            <FrameLayout
+                android:id="@+id/tabDjiWhatsApp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <View
+                    android:id="@+id/indicatorDjiWhatsApp"
+                    android:layout_width="52dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_dji_tab_indicator"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/iconDjiWhatsApp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="WhatsApp"
+                    android:src="@drawable/ic_whatsapp"
+                    app:tint="#94A3B8" />
+            </FrameLayout>
+
+            <!-- Tab 3: Respaldo ZIP / Importar -->
+            <FrameLayout
+                android:id="@+id/tabDjiZip"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <View
+                    android:id="@+id/indicatorDjiZip"
+                    android:layout_width="52dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_dji_tab_indicator"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/iconDjiZip"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Archivos ZIP"
+                    android:src="@drawable/ic_archive"
+                    app:tint="#94A3B8" />
+            </FrameLayout>
+
+            <!-- Tab 4: Perfil / Ajustes / Acerca de -->
+            <FrameLayout
+                android:id="@+id/tabDjiProfile"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <View
+                    android:id="@+id/indicatorDjiProfile"
+                    android:layout_width="52dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_dji_tab_indicator"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/iconDjiProfile"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Ajustes"
+                    android:src="@drawable/ic_person"
+                    app:tint="#94A3B8" />
+            </FrameLayout>
+
+        </LinearLayout>
+
+        <!-- Independent Circular Action Button (DJI Action Button Style) -->
+        <FrameLayout
+            android:id="@+id/btnDjiAction"
+            android:layout_width="58dp"
+            android:layout_height="58dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_dji_floating_circle"
+            android:clickable="true"
+            android:elevation="12dp"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:contentDescription="Crear Paquete"
+                android:src="@drawable/ic_add"
+                app:tint="@color/white" />
+        </FrameLayout>
+
+    </LinearLayout>
 
     <!-- Floating Bottom Selection Bar for Packs -->
     <com.google.android.material.card.MaterialCardView

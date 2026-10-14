@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
 
     private val selectZipLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            setDjiActiveTab(0)
             if (uri != null) {
                 importZipFile(uri)
             }
@@ -156,6 +157,9 @@ class MainActivity : AppCompatActivity() {
             .setView(optionsBinding.root)
             .create()
         applyLiquidGlassDialog(dialog)
+        dialog.setOnDismissListener {
+            setDjiActiveTab(0)
+        }
 
         // 1. Guardar en Dispositivo (.zip)
         optionsBinding.cardOptionSaveZip.setOnClickListener {
@@ -275,8 +279,48 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerViewPacks.adapter = adapter
     }
 
+    private fun setDjiActiveTab(tabIndex: Int) {
+        val colorActive = getColor(R.color.white)
+        val colorInactive = android.graphics.Color.parseColor("#94A3B8")
+
+        binding.indicatorDjiHome.visibility = if (tabIndex == 0) View.VISIBLE else View.GONE
+        binding.iconDjiHome.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 0) colorActive else colorInactive)
+
+        binding.indicatorDjiWhatsApp.visibility = if (tabIndex == 1) View.VISIBLE else View.GONE
+        binding.iconDjiWhatsApp.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 1) colorActive else colorInactive)
+
+        binding.indicatorDjiZip.visibility = if (tabIndex == 2) View.VISIBLE else View.GONE
+        binding.iconDjiZip.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 2) colorActive else colorInactive)
+
+        binding.indicatorDjiProfile.visibility = if (tabIndex == 3) View.VISIBLE else View.GONE
+        binding.iconDjiProfile.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 3) colorActive else colorInactive)
+    }
+
     private fun setupListeners() {
-        binding.fabCreatePack.setOnClickListener {
+        // Floating Bottom Navigation Dock (DJI Mimo Style)
+        binding.tabDjiHome.setOnClickListener {
+            setDjiActiveTab(0)
+            if (packsList.isNotEmpty()) {
+                binding.recyclerViewPacks.smoothScrollToPosition(0)
+            }
+        }
+
+        binding.tabDjiWhatsApp.setOnClickListener {
+            setDjiActiveTab(1)
+            checkAndScanWhatsAppStickers()
+        }
+
+        binding.tabDjiZip.setOnClickListener {
+            setDjiActiveTab(2)
+            launchZipPicker()
+        }
+
+        binding.tabDjiProfile.setOnClickListener {
+            setDjiActiveTab(3)
+            showMoreOptionsMenuDialog()
+        }
+
+        binding.btnDjiAction.setOnClickListener {
             showCreatePackDialog()
         }
 
@@ -325,7 +369,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateSelectionUi(selectedCount: Int) {
         if (adapter.isSelectionMode) {
             binding.cardPacksSelectionBar.visibility = View.VISIBLE
-            binding.fabCreatePack.visibility = View.GONE
+            binding.layoutDjiBottomBar.visibility = View.GONE
             binding.tvSelectedPacksCount.text = if (selectedCount == 1) "1 seleccionado" else "$selectedCount seleccionados"
             binding.btnAddSelectedToWhatsApp.isEnabled = selectedCount > 0
             binding.btnAddSelectedToWhatsApp.alpha = if (selectedCount > 0) 1.0f else 0.5f
@@ -340,7 +384,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             binding.cardPacksSelectionBar.visibility = View.GONE
-            binding.fabCreatePack.visibility = if (packsList.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.layoutDjiBottomBar.visibility = View.VISIBLE
         }
     }
 
@@ -392,7 +436,7 @@ class MainActivity : AppCompatActivity() {
     private fun exitSelectionMode() {
         adapter.isSelectionMode = false
         binding.cardPacksSelectionBar.visibility = View.GONE
-        binding.fabCreatePack.visibility = if (packsList.isNotEmpty()) View.VISIBLE else View.GONE
+        binding.layoutDjiBottomBar.visibility = View.VISIBLE
     }
 
     /**
@@ -855,6 +899,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         loadPacks()
+        setDjiActiveTab(0)
     }
 
     private fun loadPacks() {
@@ -866,13 +911,13 @@ class MainActivity : AppCompatActivity() {
         if (packs.isEmpty()) {
             binding.layoutEmpty.visibility = View.VISIBLE
             binding.recyclerViewPacks.visibility = View.GONE
-            binding.fabCreatePack.visibility = View.GONE
+            binding.layoutDjiBottomBar.visibility = if (adapter.isSelectionMode) View.GONE else View.VISIBLE
             exitSelectionMode()
         } else {
             binding.layoutEmpty.visibility = View.GONE
             binding.recyclerViewPacks.visibility = View.VISIBLE
             if (!adapter.isSelectionMode) {
-                binding.fabCreatePack.visibility = View.VISIBLE
+                binding.layoutDjiBottomBar.visibility = View.VISIBLE
             }
         }
     }
