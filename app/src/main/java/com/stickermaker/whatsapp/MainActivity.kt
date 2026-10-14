@@ -20,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.content.Context
 import com.stickermaker.whatsapp.databinding.ActivityMainBinding
 import com.stickermaker.whatsapp.databinding.DialogAboutMeBinding
+import com.stickermaker.whatsapp.databinding.DialogConfirmDangerBinding
 import com.stickermaker.whatsapp.databinding.DialogCreatePackBinding
 import com.stickermaker.whatsapp.databinding.DialogExportZipProgressBinding
 import com.stickermaker.whatsapp.databinding.DialogExportZipSuccessBinding
@@ -49,6 +50,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: StickerPackAdapter
     private val packsList = mutableListOf<StickerPack>()
+    private val displayedPacks = mutableListOf<StickerPack>()
+    private var currentTabFilter = TAB_ALL
+    private var searchQuery = ""
 
     // Sequential WhatsApp Addition Queue
     private val sequentialAddQueue = ArrayDeque<StickerPack>()
@@ -57,11 +61,15 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val ADD_PACK_REQUEST_CODE = 2001
+        const val TAB_ALL = 0
+        const val TAB_STATIC = 1
+        const val TAB_ANIMATED = 2
+        const val TAB_MORE = 3
     }
 
     private val selectZipLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            setDjiActiveTab(0)
+            setDjiActiveTab(currentTabFilter)
             if (uri != null) {
                 importZipFile(uri)
             }
@@ -114,8 +122,12 @@ class MainActivity : AppCompatActivity() {
     private fun setupBackPressHandler() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (adapter.isSelectionMode) {
+                if (binding.layoutSearchHeader.visibility == View.VISIBLE) {
+                    closeSearchMode()
+                } else if (adapter.isSelectionMode) {
                     exitSelectionMode()
+                } else if (currentTabFilter != TAB_ALL) {
+                    setDjiActiveTab(TAB_ALL)
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -131,24 +143,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
-        binding.toolbar.inflateMenu(R.menu.menu_main)
-        binding.toolbar.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.action_add_multiple_whatsapp -> {
-                    showSelectPacksToWhatsAppDialog()
-                    true
-                }
-                R.id.action_share_all_zip -> {
-                    shareAllPacksAsZip()
-                    true
-                }
-                R.id.action_more_options -> {
-                    showMoreOptionsMenuDialog()
-                    true
-                }
-                else -> false
-            }
+        binding.btnSearchPacks.setOnClickListener {
+            binding.layoutNormalHeader.visibility = View.GONE
+            binding.layoutSearchHeader.visibility = View.VISIBLE
+            binding.etSearchPacks.requestFocus()
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+            imm?.showSoftInput(binding.etSearchPacks, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
         }
+
+        binding.btnCloseSearch.setOnClickListener {
+            closeSearchMode()
+        }
+
+        binding.etSearchPacks.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                searchQuery = s?.toString()?.trim() ?: ""
+                filterAndDisplayPacks()
+            }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+    }
+
+    private fun closeSearchMode() {
+        searchQuery = ""
+        binding.etSearchPacks.setText("")
+        binding.layoutSearchHeader.visibility = View.GONE
+        binding.layoutNormalHeader.visibility = View.VISIBLE
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        imm?.hideSoftInputFromWindow(binding.etSearchPacks.windowToken, 0)
+        filterAndDisplayPacks()
     }
 
     private fun showMoreOptionsMenuDialog() {
@@ -158,7 +182,19 @@ class MainActivity : AppCompatActivity() {
             .create()
         applyLiquidGlassDialog(dialog)
         dialog.setOnDismissListener {
-            setDjiActiveTab(0)
+            setDjiActiveTab(currentTabFilter)
+        }
+
+        // WhatsApp 1: Escanear stickers de WhatsApp
+        optionsBinding.cardOptionScanWhatsApp.setOnClickListener {
+            dialog.dismiss()
+            checkAndScanWhatsAppStickers()
+        }
+
+        // WhatsApp 2: Añadir varios a WhatsApp
+        optionsBinding.cardOptionAddMultipleWhatsApp.setOnClickListener {
+            dialog.dismiss()
+            showSelectPacksToWhatsAppDialog()
         }
 
         // 1. Guardar en Dispositivo (.zip)
@@ -260,7 +296,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         adapter = StickerPackAdapter(
-            packs = packsList,
+            packs = displayedPacks,
             onPackClick = { pack ->
                 openPackDetail(pack.identifier)
             },
@@ -283,40 +319,43 @@ class MainActivity : AppCompatActivity() {
         val colorActive = getColor(R.color.white)
         val colorInactive = android.graphics.Color.parseColor("#94A3B8")
 
-        binding.indicatorDjiHome.visibility = if (tabIndex == 0) View.VISIBLE else View.GONE
-        binding.iconDjiHome.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 0) colorActive else colorInactive)
+        binding.indicatorDjiAll.visibility = if (tabIndex == 0) View.VISIBLE else View.GONE
+        binding.iconDjiAll.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 0) colorActive else colorInactive)
 
-        binding.indicatorDjiWhatsApp.visibility = if (tabIndex == 1) View.VISIBLE else View.GONE
-        binding.iconDjiWhatsApp.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 1) colorActive else colorInactive)
+        binding.indicatorDjiStatic.visibility = if (tabIndex == 1) View.VISIBLE else View.GONE
+        binding.iconDjiStatic.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 1) colorActive else colorInactive)
 
-        binding.indicatorDjiZip.visibility = if (tabIndex == 2) View.VISIBLE else View.GONE
-        binding.iconDjiZip.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 2) colorActive else colorInactive)
+        binding.indicatorDjiAnimated.visibility = if (tabIndex == 2) View.VISIBLE else View.GONE
+        binding.iconDjiAnimated.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 2) colorActive else colorInactive)
 
-        binding.indicatorDjiProfile.visibility = if (tabIndex == 3) View.VISIBLE else View.GONE
-        binding.iconDjiProfile.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 3) colorActive else colorInactive)
+        binding.indicatorDjiMore.visibility = if (tabIndex == 3) View.VISIBLE else View.GONE
+        binding.iconDjiMore.imageTintList = android.content.res.ColorStateList.valueOf(if (tabIndex == 3) colorActive else colorInactive)
+
+        if (tabIndex in 0..2) {
+            currentTabFilter = tabIndex
+            filterAndDisplayPacks()
+            if (displayedPacks.isNotEmpty()) {
+                binding.recyclerViewPacks.scrollToPosition(0)
+            }
+        }
     }
 
     private fun setupListeners() {
         // Floating Bottom Navigation Dock (DJI Mimo Style)
-        binding.tabDjiHome.setOnClickListener {
-            setDjiActiveTab(0)
-            if (packsList.isNotEmpty()) {
-                binding.recyclerViewPacks.smoothScrollToPosition(0)
-            }
+        binding.tabDjiAll.setOnClickListener {
+            setDjiActiveTab(TAB_ALL)
         }
 
-        binding.tabDjiWhatsApp.setOnClickListener {
-            setDjiActiveTab(1)
-            checkAndScanWhatsAppStickers()
+        binding.tabDjiStatic.setOnClickListener {
+            setDjiActiveTab(TAB_STATIC)
         }
 
-        binding.tabDjiZip.setOnClickListener {
-            setDjiActiveTab(2)
-            launchZipPicker()
+        binding.tabDjiAnimated.setOnClickListener {
+            setDjiActiveTab(TAB_ANIMATED)
         }
 
-        binding.tabDjiProfile.setOnClickListener {
-            setDjiActiveTab(3)
+        binding.tabDjiMore.setOnClickListener {
+            setDjiActiveTab(TAB_MORE)
             showMoreOptionsMenuDialog()
         }
 
@@ -388,25 +427,50 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showDangerConfirmDialog(
+        title: String,
+        message: String,
+        confirmButtonText: String,
+        onConfirm: () -> Unit
+    ) {
+        val dialogBinding = DialogConfirmDangerBinding.inflate(layoutInflater)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogBinding.root)
+            .create()
+        applyLiquidGlassDialog(dialog)
+
+        dialogBinding.tvDangerTitle.text = title
+        dialogBinding.tvDangerMessage.text = message
+        dialogBinding.btnDangerConfirm.text = confirmButtonText
+
+        dialogBinding.btnDangerCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnDangerConfirm.setOnClickListener {
+            dialog.dismiss()
+            onConfirm()
+        }
+
+        dialog.show()
+    }
+
     private fun confirmDeleteSelectedPacks() {
         val selectedIds = adapter.selectedPackIds.toList()
         if (selectedIds.isEmpty()) return
 
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("¿Eliminar ${selectedIds.size} paquetes?")
-            .setMessage("Se eliminarán los ${selectedIds.size} paquetes seleccionados de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.")
-            .setPositiveButton(R.string.delete) { _, _ ->
-                for (id in selectedIds) {
-                    StickerStorage.deletePack(this, id)
-                }
-                exitSelectionMode()
-                loadPacks()
-                Toast.makeText(this, "${selectedIds.size} paquetes eliminados", Toast.LENGTH_SHORT).show()
+        showDangerConfirmDialog(
+            title = getString(R.string.delete_selected_packs_title, selectedIds.size),
+            message = getString(R.string.delete_selected_packs_msg, selectedIds.size),
+            confirmButtonText = getString(R.string.delete)
+        ) {
+            for (id in selectedIds) {
+                StickerStorage.deletePack(this, id)
             }
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        applyLiquidGlassDialog(dialog)
-        dialog.show()
+            exitSelectionMode()
+            loadPacks()
+            Toast.makeText(this, "${selectedIds.size} paquetes eliminados", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun confirmDeleteAllPacks() {
@@ -416,21 +480,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("¿Vaciar todos los paquetes?")
-            .setMessage("Se eliminarán absolutamente todos los $count paquetes de la aplicación.\n\nEsta acción es irreversible.")
-            .setPositiveButton(R.string.delete) { _, _ ->
-                for (pack in packsList) {
-                    StickerStorage.deletePack(this, pack.identifier)
-                }
-                exitSelectionMode()
-                loadPacks()
-                Toast.makeText(this, "Se han eliminado todos los paquetes", Toast.LENGTH_SHORT).show()
+        showDangerConfirmDialog(
+            title = getString(R.string.delete_all_packs_title),
+            message = getString(R.string.delete_all_packs_msg, count),
+            confirmButtonText = getString(R.string.delete_all_confirm_btn)
+        ) {
+            for (pack in packsList) {
+                StickerStorage.deletePack(this, pack.identifier)
             }
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        applyLiquidGlassDialog(dialog)
-        dialog.show()
+            exitSelectionMode()
+            loadPacks()
+            Toast.makeText(this, "Se han eliminado todos los paquetes", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun exitSelectionMode() {
@@ -906,12 +967,65 @@ class MainActivity : AppCompatActivity() {
         val packs = StickerStorage.getAllPacks(this)
         packsList.clear()
         packsList.addAll(packs)
+        filterAndDisplayPacks()
+    }
+
+    private fun filterAndDisplayPacks() {
+        val filtered = packsList.filter { pack ->
+            val matchesTab = when (currentTabFilter) {
+                TAB_STATIC -> !pack.animatedStickerPack
+                TAB_ANIMATED -> pack.animatedStickerPack
+                else -> true
+            }
+            val matchesSearch = if (searchQuery.isEmpty()) {
+                true
+            } else {
+                pack.name.contains(searchQuery, ignoreCase = true) ||
+                pack.publisher.contains(searchQuery, ignoreCase = true)
+            }
+            matchesTab && matchesSearch
+        }
+
+        displayedPacks.clear()
+        displayedPacks.addAll(filtered)
         adapter.notifyDataSetChanged()
 
-        if (packs.isEmpty()) {
+        val totalAll = packsList.size
+        val totalStatic = packsList.count { !it.animatedStickerPack }
+        val totalAnimated = packsList.count { it.animatedStickerPack }
+
+        binding.tvPacksFilterBadge.text = when (currentTabFilter) {
+            TAB_STATIC -> "$totalStatic estáticos"
+            TAB_ANIMATED -> "$totalAnimated animados"
+            else -> "$totalAll paquetes"
+        }
+
+        if (displayedPacks.isEmpty()) {
             binding.layoutEmpty.visibility = View.VISIBLE
             binding.recyclerViewPacks.visibility = View.GONE
             binding.layoutDjiBottomBar.visibility = if (adapter.isSelectionMode) View.GONE else View.VISIBLE
+
+            if (packsList.isEmpty()) {
+                binding.tvEmptyTitle.setText(R.string.empty_packs_title)
+                binding.tvEmptyDesc.setText(R.string.empty_packs_desc)
+                binding.btnEmptyCreate.visibility = View.VISIBLE
+                binding.btnEmptyImportZip.visibility = View.VISIBLE
+            } else if (currentTabFilter == TAB_STATIC) {
+                binding.tvEmptyTitle.setText(R.string.no_static_packs)
+                binding.tvEmptyDesc.text = "No tienes paquetes de stickers estáticos aún."
+                binding.btnEmptyCreate.visibility = View.VISIBLE
+                binding.btnEmptyImportZip.visibility = View.GONE
+            } else if (currentTabFilter == TAB_ANIMATED) {
+                binding.tvEmptyTitle.setText(R.string.no_animated_packs)
+                binding.tvEmptyDesc.text = "No tienes paquetes de stickers animados aún."
+                binding.btnEmptyCreate.visibility = View.VISIBLE
+                binding.btnEmptyImportZip.visibility = View.GONE
+            } else {
+                binding.tvEmptyTitle.text = "Sin resultados"
+                binding.tvEmptyDesc.text = "No se encontraron paquetes que coincidan con \"$searchQuery\"."
+                binding.btnEmptyCreate.visibility = View.GONE
+                binding.btnEmptyImportZip.visibility = View.GONE
+            }
             exitSelectionMode()
         } else {
             binding.layoutEmpty.visibility = View.GONE
@@ -970,16 +1084,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmDeletePack(pack: StickerPack) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("¿Eliminar este paquete?")
-            .setMessage("Se eliminará '${pack.name}' de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.")
-            .setPositiveButton(R.string.delete) { _, _ ->
-                StickerStorage.deletePack(this, pack.identifier)
-                loadPacks()
-                Toast.makeText(this, "Paquete '${pack.name}' eliminado", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        showDangerConfirmDialog(
+            title = getString(R.string.delete_pack_confirm),
+            message = "Se eliminará '${pack.name}' de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.",
+            confirmButtonText = getString(R.string.delete)
+        ) {
+            StickerStorage.deletePack(this, pack.identifier)
+            loadPacks()
+            Toast.makeText(this, "Paquete '${pack.name}' eliminado", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun <T> partitionIntoValidPacks(items: List<T>): List<List<T>> {
@@ -1121,10 +1234,8 @@ class MainActivity : AppCompatActivity() {
                 for ((chunkIndex, chunk) in chunks.withIndex()) {
                     val packName = if (chunks.size == 1) {
                         baseName
-                    } else if (chunkIndex == 0) {
-                        baseName
                     } else {
-                        "$baseName (Parte $chunkIndex)"
+                        "$baseName (Parte ${chunkIndex + 1})"
                     }
 
                     val packId = UUID.randomUUID().toString()
@@ -1171,17 +1282,26 @@ class MainActivity : AppCompatActivity() {
                 progressDialog.dismiss()
                 loadPacks()
                 val summary = buildString {
-                    appendLine("🎉 ¡Se crearon $createdPacksCount paquetes con $totalNew stickers de WhatsApp!")
+                    appendLine("🎉 ¡Escaneo completado!")
+                    appendLine("• $totalNew stickers nuevos organizados en $createdPacksCount paquetes:")
+                    if (staticChunks.isNotEmpty()) {
+                        appendLine("  🖼️ ${staticChunks.size} paquetes estáticos")
+                    }
+                    if (animatedChunks.isNotEmpty()) {
+                        appendLine("  🎬 ${animatedChunks.size} paquetes animados")
+                    }
                     if (duplicatesCount > 0) {
                         appendLine("\n🧹 $duplicatesCount stickers ya existentes fueron omitidos.")
                     }
-                    appendLine("\nCada paquete tiene un máximo de 30 stickers para cumplir con WhatsApp.")
+                    appendLine("\nUsa las pestañas inferiores para verlos organizados sin tener que hacer scroll.")
                 }
-                MaterialAlertDialogBuilder(this@MainActivity)
+                val resultDialog = MaterialAlertDialogBuilder(this@MainActivity)
                     .setTitle("✅ Escaneo Completado")
                     .setMessage(summary)
                     .setPositiveButton("Aceptar", null)
-                    .show()
+                    .create()
+                applyLiquidGlassDialog(resultDialog)
+                resultDialog.show()
             }
         }
     }

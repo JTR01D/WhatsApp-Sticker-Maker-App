@@ -11,8 +11,8 @@ android {
         applicationId = "com.stickermaker.whatsapp"
         minSdk = 24
         targetSdk = 34
-        versionCode = 42
-        versionName = "1.3.13"
+        versionCode = 43
+        versionName = "1.3.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

@@ -63,4 +63,22 @@
     <string name="lang_english">English</string>
     <string name="lang_english_sub">English (United States)</string>
     <string name="lang_selected_badge">Activo</string>
+
+    <!-- New Options & Filter Strings -->
+    <string name="option_scan_whatsapp">Escanear WhatsApp</string>
+    <string name="option_scan_whatsapp_desc">Extrae stickers guardados automáticamente de tus carpetas de WhatsApp</string>
+    <string name="option_add_multiple">Añadir Varios a WhatsApp</string>
+    <string name="option_add_multiple_desc">Añade múltiples paquetes seguidamente con confirmación guiada</string>
+    <string name="tab_all">Todos</string>
+    <string name="tab_static">Estáticos</string>
+    <string name="tab_animated">Animados</string>
+    <string name="tab_more">Opciones</string>
+    <string name="search_hint">Buscar paquete…</string>
+    <string name="no_static_packs">No hay paquetes estáticos</string>
+    <string name="no_animated_packs">No hay paquetes animados</string>
+    <string name="delete_all_packs_title">¿Vaciar todos los paquetes?</string>
+    <string name="delete_all_packs_msg">Se eliminarán absolutamente todos los %1$d paquetes de la aplicación.\n\nEsta acción es irreversible y no se puede deshacer.</string>
+    <string name="delete_all_confirm_btn">Vaciar Todo</string>
+    <string name="delete_selected_packs_title">¿Eliminar %1$d paquetes?</string>
+    <string name="delete_selected_packs_msg">Se eliminarán los %1$d paquetes seleccionados de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.</string>
 </resources>
