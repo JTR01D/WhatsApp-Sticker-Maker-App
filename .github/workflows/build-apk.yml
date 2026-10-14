@@ -45,7 +45,8 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build_output.log
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build_output.log || (echo "=== GRADLE FAILED ==="; tail -n 80 build_output.log; exit 1)
 
       - name: Upload Build Log on Failure
         if: failure()
@@ -57,6 +58,7 @@ jobs:
       - name: Prepare APK for Release
         run: |
           mkdir -p release_assets
+          ls -la app/build/outputs/apk/debug/ || ls -la app/build/outputs/apk/ || true
           cp app/build/outputs/apk/debug/*.apk release_assets/WhatsAppStickerMaker.apk
 
       - name: Upload APK Artifact
