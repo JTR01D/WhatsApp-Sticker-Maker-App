@@ -23,6 +23,18 @@ android {
         noCompress("webp")
     }
 
+    signingConfigs {
+        getByName("debug") {
+            val keystoreFile = file("debug.keystore")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -34,6 +46,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             buildConfigField("String", "CONTENT_PROVIDER_AUTHORITY", "\"com.stickermaker.whatsapp.debug.stickercontentprovider\"")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
