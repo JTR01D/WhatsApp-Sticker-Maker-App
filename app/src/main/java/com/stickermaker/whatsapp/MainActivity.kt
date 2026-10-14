@@ -342,6 +342,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         // Floating Bottom Navigation Dock (DJI Mimo Style)
+        val djiViews = listOf(
+            binding.tabDjiAll,
+            binding.tabDjiStatic,
+            binding.tabDjiAnimated,
+            binding.tabDjiMore,
+            binding.btnDjiAction
+        )
+        for (view in djiViews) {
+            view.setOnTouchListener { v, event ->
+                when (event.action) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        v.animate().scaleX(0.91f).scaleY(0.91f).setDuration(90).start()
+                    }
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> {
+                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(130).start()
+                    }
+                }
+                false
+            }
+        }
+
         binding.tabDjiAll.setOnClickListener {
             setDjiActiveTab(TAB_ALL)
         }

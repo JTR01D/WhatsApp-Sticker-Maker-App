@@ -233,6 +233,7 @@
             android:layout_height="58dp"
             android:layout_weight="1"
             android:background="@drawable/bg_dji_floating_dock"
+            android:clipToOutline="true"
             android:elevation="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -242,17 +243,19 @@
             <FrameLayout
                 android:id="@+id/tabDjiAll"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="44dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
+                android:background="@drawable/bg_dji_tab_ripple"
+                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless">
+                android:focusable="true">
 
                 <View
                     android:id="@+id/indicatorDjiAll"
-                    android:layout_width="52dp"
-                    android:layout_height="38dp"
-                    android:layout_gravity="center"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="visible" />
 
@@ -270,17 +273,19 @@
             <FrameLayout
                 android:id="@+id/tabDjiStatic"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="44dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
+                android:background="@drawable/bg_dji_tab_ripple"
+                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless">
+                android:focusable="true">
 
                 <View
                     android:id="@+id/indicatorDjiStatic"
-                    android:layout_width="52dp"
-                    android:layout_height="38dp"
-                    android:layout_gravity="center"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="gone" />
 
@@ -298,17 +303,19 @@
             <FrameLayout
                 android:id="@+id/tabDjiAnimated"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="44dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
+                android:background="@drawable/bg_dji_tab_ripple"
+                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless">
+                android:focusable="true">
 
                 <View
                     android:id="@+id/indicatorDjiAnimated"
-                    android:layout_width="52dp"
-                    android:layout_height="38dp"
-                    android:layout_gravity="center"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="gone" />
 
@@ -326,17 +333,19 @@
             <FrameLayout
                 android:id="@+id/tabDjiMore"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="44dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
+                android:background="@drawable/bg_dji_tab_ripple"
+                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless">
+                android:focusable="true">
 
                 <View
                     android:id="@+id/indicatorDjiMore"
-                    android:layout_width="52dp"
-                    android:layout_height="38dp"
-                    android:layout_gravity="center"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="gone" />
 
@@ -359,10 +368,11 @@
             android:layout_height="58dp"
             android:layout_marginStart="10dp"
             android:background="@drawable/bg_dji_floating_circle"
+            android:clipToOutline="true"
             android:clickable="true"
             android:elevation="12dp"
             android:focusable="true"
-            android:foreground="?attr/selectableItemBackgroundBorderless">
+            android:foreground="@drawable/bg_dji_circle_ripple">
 
             <ImageView
                 android:layout_width="28dp"
