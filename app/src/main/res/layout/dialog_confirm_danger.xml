@@ -32,7 +32,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:gravity="center"
-        android:text="@string/delete_pack"
+        android:text="@string/delete"
         android:textColor="@color/text_primary"
         android:textSize="19sp"
         android:textStyle="bold" />

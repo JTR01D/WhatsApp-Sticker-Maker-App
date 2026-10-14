@@ -19,6 +19,7 @@
     <string name="delete_pack_confirm">¿Deseas eliminar este paquete de stickers?</string>
     <string name="delete_sticker_confirm">¿Deseas eliminar este sticker?</string>
     <string name="delete">Eliminar</string>
+    <string name="delete_pack">Eliminar Paquete</string>
     <string name="processing_images">Optimizando y convirtiendo imágenes a WebP 512x512…</string>
     <string name="success_stickers_added">Stickers agregados correctamente</string>
 
