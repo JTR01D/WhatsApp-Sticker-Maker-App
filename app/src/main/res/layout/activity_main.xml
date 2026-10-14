@@ -247,15 +247,15 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_dji_tab_ripple"
-                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true">
+                android:focusable="true"
+                android:foreground="@drawable/bg_dji_tab_ripple">
 
                 <View
                     android:id="@+id/indicatorDjiAll"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="54dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="visible" />
 
@@ -277,15 +277,15 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_dji_tab_ripple"
-                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true">
+                android:focusable="true"
+                android:foreground="@drawable/bg_dji_tab_ripple">
 
                 <View
                     android:id="@+id/indicatorDjiStatic"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="54dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="gone" />
 
@@ -307,15 +307,15 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_dji_tab_ripple"
-                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true">
+                android:focusable="true"
+                android:foreground="@drawable/bg_dji_tab_ripple">
 
                 <View
                     android:id="@+id/indicatorDjiAnimated"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="54dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="gone" />
 
@@ -337,15 +337,15 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginHorizontal="2dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_dji_tab_ripple"
-                android:clipToOutline="true"
                 android:clickable="true"
-                android:focusable="true">
+                android:focusable="true"
+                android:foreground="@drawable/bg_dji_tab_ripple">
 
                 <View
                     android:id="@+id/indicatorDjiMore"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="54dp"
+                    android:layout_height="38dp"
+                    android:layout_gravity="center"
                     android:background="@drawable/bg_dji_tab_indicator"
                     android:visibility="gone" />
 
@@ -368,7 +368,6 @@
             android:layout_height="58dp"
             android:layout_marginStart="10dp"
             android:background="@drawable/bg_dji_floating_circle"
-            android:clipToOutline="true"
             android:clickable="true"
             android:elevation="12dp"
             android:focusable="true"
