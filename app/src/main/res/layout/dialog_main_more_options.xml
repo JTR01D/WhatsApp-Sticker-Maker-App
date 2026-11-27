@@ -87,7 +87,7 @@
                 <FrameLayout
                     android:layout_width="42dp"
                     android:layout_height="42dp"
-                    android:background="@drawable/bg_circle_tinted">
+                    android:background="@drawable/bg_dialog_icon_squircle">
 
                     <ImageView
                         android:layout_width="22dp"

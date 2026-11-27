@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -34,10 +35,19 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.RangeSlider
 import com.stickermaker.whatsapp.databinding.ActivityVideoStickerStudioBinding
+import com.stickermaker.whatsapp.databinding.DialogCreatePackBinding
+import com.stickermaker.whatsapp.model.StickerPack
+import com.stickermaker.whatsapp.utils.AnimatedWebpEncoder
+import com.stickermaker.whatsapp.utils.StickerStorage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -62,6 +72,7 @@ class VideoStickerStudioActivity : AppCompatActivity() {
     private var isUpdatingSlider: Boolean = false
 
     private var exportedCacheFile: File? = null
+    private var webpExportJob: Job? = null
 
     private val progressHandler = Handler(Looper.getMainLooper())
     private val progressHolder = ProgressHolder()
@@ -173,6 +184,10 @@ class VideoStickerStudioActivity : AppCompatActivity() {
                 applyClippedPreview()
             }
         })
+
+        binding.btnSaveWebpToPack.setOnClickListener {
+            showChoosePackAndSaveWebp()
+        }
 
         binding.btnExportClip.setOnClickListener {
             exportClipForWhatsApp()
@@ -331,6 +346,7 @@ class VideoStickerStudioActivity : AppCompatActivity() {
         if (outFile.exists()) outFile.delete()
         exportedCacheFile = outFile
 
+        binding.tvExportProgressTitle.setText(R.string.exporting_video_progress)
         binding.progressExport.progress = 0
         binding.tvExportPercent.text = "0%"
         binding.layoutExportProgress.visibility = View.VISIBLE
@@ -398,7 +414,148 @@ class VideoStickerStudioActivity : AppCompatActivity() {
         progressHandler.removeCallbacks(progressRunnable)
         activeTransformer?.cancel()
         activeTransformer = null
+        webpExportJob?.cancel()
+        webpExportJob = null
         binding.layoutExportProgress.visibility = View.GONE
+    }
+
+    private fun showChoosePackAndSaveWebp() {
+        if (selectedVideoUri == null) return
+        val compatiblePacks = StickerStorage.getAllPacks(this)
+            .filter { (it.stickers.isEmpty() || it.animatedStickerPack) && it.stickers.size < 30 }
+
+        if (compatiblePacks.isEmpty()) {
+            showCreateAnimatedPackDialog()
+            return
+        }
+
+        val items = compatiblePacks.map { "${it.name} (${it.stickers.size}/30)" }.toMutableList()
+        items.add(getString(R.string.create_new_animated_pack))
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.choose_pack_title)
+            .setItems(items.toTypedArray()) { _, which ->
+                if (which == items.lastIndex) {
+                    showCreateAnimatedPackDialog()
+                } else {
+                    encodeAndSaveWebpToPack(compatiblePacks[which])
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(R.drawable.bg_liquid_glass_dialog)
+        dialog.show()
+    }
+
+    private fun showCreateAnimatedPackDialog() {
+        val dialogBinding = DialogCreatePackBinding.inflate(layoutInflater)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogBinding.root)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(R.drawable.bg_liquid_glass_dialog)
+
+        dialogBinding.btnCancel.setOnClickListener { dialog.dismiss() }
+        dialogBinding.btnCreatePack.setOnClickListener {
+            val name = dialogBinding.etPackName.text?.toString()?.trim().orEmpty()
+            val publisher = dialogBinding.etPublisher.text?.toString()?.trim().orEmpty()
+
+            if (name.isEmpty()) {
+                dialogBinding.tilPackName.error = "Escribe un nombre para el paquete"
+                dialogBinding.etPackName.requestFocus()
+                return@setOnClickListener
+            }
+
+            val newPack = StickerPack(
+                identifier = UUID.randomUUID().toString(),
+                name = name,
+                publisher = if (publisher.isEmpty()) "Personal" else publisher,
+                trayImageFile = "",
+                animatedStickerPack = true
+            )
+            StickerStorage.savePack(this, newPack)
+            dialog.dismiss()
+            encodeAndSaveWebpToPack(newPack)
+        }
+        dialog.show()
+    }
+
+    private fun encodeAndSaveWebpToPack(targetPack: StickerPack) {
+        val uri = selectedVideoUri ?: return
+        exoPlayer?.pause()
+        binding.layoutPlayOverlay.visibility = View.VISIBLE
+
+        val startMs = (trimStartSec * 1000f).toLong().coerceAtLeast(0L)
+        val endMs = (trimEndSec * 1000f).toLong().coerceAtLeast(startMs + 300L)
+
+        val outWebp = File(cacheDir, "wsm_anim_${System.currentTimeMillis()}.webp")
+        if (outWebp.exists()) outWebp.delete()
+
+        binding.tvExportProgressTitle.setText(R.string.exporting_webp_progress)
+        binding.progressExport.progress = 0
+        binding.tvExportPercent.text = "0%"
+        binding.layoutExportProgress.visibility = View.VISIBLE
+
+        webpExportJob = lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                AnimatedWebpEncoder.encodeVideoToAnimatedWebp(
+                    context = this@VideoStickerStudioActivity,
+                    videoUri = uri,
+                    startMs = startMs,
+                    endMs = endMs,
+                    isCropFill = isCropFill,
+                    outputFile = outWebp
+                ) { pct ->
+                    runOnUiThread {
+                        binding.progressExport.progress = pct
+                        binding.tvExportPercent.text = "$pct%"
+                    }
+                }
+            }
+
+            if (!result.success) {
+                binding.layoutExportProgress.visibility = View.GONE
+                Toast.makeText(
+                    this@VideoStickerStudioActivity,
+                    result.errorMessage ?: "Error al crear sticker .webp",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
+
+            val added = withContext(Dispatchers.IO) {
+                StickerStorage.addStickerToPack(
+                    this@VideoStickerStudioActivity,
+                    targetPack.identifier,
+                    Uri.fromFile(outWebp)
+                )
+            }
+            outWebp.delete()
+            binding.layoutExportProgress.visibility = View.GONE
+
+            if (added) {
+                val sizeKb = String.format(Locale.US, "%.0f KB", result.fileSizeBytes / 1024.0)
+                val successDialog = MaterialAlertDialogBuilder(this@VideoStickerStudioActivity)
+                    .setTitle("✅ Sticker (.webp)")
+                    .setMessage(getString(R.string.sticker_saved_to_pack_msg, targetPack.name, sizeKb))
+                    .setPositiveButton(R.string.open_pack) { _, _ ->
+                        val intent = Intent(this@VideoStickerStudioActivity, PackDetailActivity::class.java).apply {
+                            putExtra(PackDetailActivity.EXTRA_PACK_ID, targetPack.identifier)
+                        }
+                        startActivity(intent)
+                        finish()
+                    }
+                    .setNegativeButton(R.string.done, null)
+                    .create()
+                successDialog.window?.setBackgroundDrawableResource(R.drawable.bg_liquid_glass_dialog)
+                successDialog.show()
+            } else {
+                Toast.makeText(
+                    this@VideoStickerStudioActivity,
+                    "No se pudo añadir el sticker al paquete",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun saveToGallery(sourceFile: File) {

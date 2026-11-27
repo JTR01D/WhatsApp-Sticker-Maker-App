@@ -1022,9 +1022,9 @@ class MainActivity : AppCompatActivity() {
         val totalAnimated = packsList.count { it.animatedStickerPack }
 
         binding.tvPacksFilterBadge.text = when (currentTabFilter) {
-            TAB_STATIC -> "$totalStatic estáticos"
-            TAB_ANIMATED -> "$totalAnimated animados"
-            else -> "$totalAll paquetes"
+            TAB_STATIC -> getString(R.string.badge_packs_static, totalStatic)
+            TAB_ANIMATED -> getString(R.string.badge_packs_animated, totalAnimated)
+            else -> getString(R.string.badge_packs_all, totalAll)
         }
 
         if (displayedPacks.isEmpty()) {
@@ -1039,17 +1039,17 @@ class MainActivity : AppCompatActivity() {
                 binding.btnEmptyImportZip.visibility = View.VISIBLE
             } else if (currentTabFilter == TAB_STATIC) {
                 binding.tvEmptyTitle.setText(R.string.no_static_packs)
-                binding.tvEmptyDesc.text = "No tienes paquetes de stickers estáticos aún."
+                binding.tvEmptyDesc.setText(R.string.empty_static_desc)
                 binding.btnEmptyCreate.visibility = View.VISIBLE
                 binding.btnEmptyImportZip.visibility = View.GONE
             } else if (currentTabFilter == TAB_ANIMATED) {
                 binding.tvEmptyTitle.setText(R.string.no_animated_packs)
-                binding.tvEmptyDesc.text = "No tienes paquetes de stickers animados aún."
+                binding.tvEmptyDesc.setText(R.string.empty_animated_desc)
                 binding.btnEmptyCreate.visibility = View.VISIBLE
                 binding.btnEmptyImportZip.visibility = View.GONE
             } else {
-                binding.tvEmptyTitle.text = "Sin resultados"
-                binding.tvEmptyDesc.text = "No se encontraron paquetes que coincidan con \"$searchQuery\"."
+                binding.tvEmptyTitle.setText(R.string.no_results_title)
+                binding.tvEmptyDesc.text = getString(R.string.no_results_desc, searchQuery)
                 binding.btnEmptyCreate.visibility = View.GONE
                 binding.btnEmptyImportZip.visibility = View.GONE
             }

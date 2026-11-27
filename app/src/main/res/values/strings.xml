@@ -105,4 +105,17 @@
     <string name="export_success_msg">Guardado en Galería (Movies/StickerMaker).\n\nPara usarlo como sticker con sonido:\n1. En WhatsApp abre Stickers → Crear (+).\n2. Selecciona este video y activa el ícono de sonido.</string>
     <string name="share_to_whatsapp">Compartir en WhatsApp</string>
     <string name="done">Listo</string>
+    <string name="save_webp_pack_btn">Guardar Sticker (.webp)</string>
+    <string name="exporting_webp_progress">Creando sticker animado .webp (≤ 500 KB)…</string>
+    <string name="choose_pack_title">Guardar en Paquete</string>
+    <string name="create_new_animated_pack">+ Crear nuevo paquete animado</string>
+    <string name="sticker_saved_to_pack_msg">Sticker animado guardado en \"%1$s\" (%2$s).</string>
+    <string name="open_pack">Abrir Paquete</string>
+    <string name="badge_packs_all">%1$d paquetes</string>
+    <string name="badge_packs_static">%1$d estáticos</string>
+    <string name="badge_packs_animated">%1$d animados</string>
+    <string name="empty_static_desc">No tienes paquetes de stickers estáticos aún.</string>
+    <string name="empty_animated_desc">No tienes paquetes de stickers animados aún.</string>
+    <string name="no_results_title">Sin resultados</string>
+    <string name="no_results_desc">No se encontraron paquetes que coincidan con \"%1$s\".</string>
 </resources>

@@ -425,22 +425,39 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_liquid_glass_appbar"
-            android:padding="14dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="12dp"
             android:visibility="gone"
             tools:visibility="visible">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnExportClip"
+                android:id="@+id/btnSaveWebpToPack"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:backgroundTint="@color/btn_whatsapp_bg"
-                android:text="@string/export_audio_sticker_btn"
+                android:text="@string/save_webp_pack_btn"
                 android:textColor="@color/btn_whatsapp_text"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                app:cornerRadius="26dp"
-                app:icon="@drawable/ic_save"
+                app:cornerRadius="25dp"
+                app:icon="@drawable/ic_sticker_pack"
                 app:iconTint="@color/btn_whatsapp_text" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExportClip"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/export_audio_sticker_btn"
+                android:textColor="@color/tonal_green_text"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="22dp"
+                app:icon="@drawable/ic_save"
+                app:iconTint="@color/tonal_green_text"
+                app:strokeColor="@color/card_stroke" />
         </LinearLayout>
 
     </LinearLayout>
@@ -475,6 +492,7 @@
                 android:progressTint="@color/accent_whatsapp" />
 
             <TextView
+                android:id="@+id/tvExportProgressTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
