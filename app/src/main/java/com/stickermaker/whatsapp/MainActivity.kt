@@ -990,11 +990,24 @@ class MainActivity : AppCompatActivity() {
         setDjiActiveTab(0)
     }
 
+    private var loadPacksJob: kotlinx.coroutines.Job? = null
+
     private fun loadPacks() {
-        val packs = StickerStorage.getAllPacks(this)
-        packsList.clear()
-        packsList.addAll(packs)
-        filterAndDisplayPacks()
+        loadPacksJob?.cancel()
+        loadPacksJob = lifecycleScope.launch {
+            val (packs, whitelistedIds) = withContext(Dispatchers.IO) {
+                val loaded = StickerStorage.getAllPacks(this@MainActivity)
+                val whitelisted = loaded
+                    .filter { WhatsAppChecker.isPackWhitelisted(this@MainActivity, it.identifier) }
+                    .map { it.identifier }
+                    .toSet()
+                Pair(loaded, whitelisted)
+            }
+            packsList.clear()
+            packsList.addAll(packs)
+            adapter.updateWhitelistedIds(whitelistedIds)
+            filterAndDisplayPacks()
+        }
     }
 
     private fun filterAndDisplayPacks() {

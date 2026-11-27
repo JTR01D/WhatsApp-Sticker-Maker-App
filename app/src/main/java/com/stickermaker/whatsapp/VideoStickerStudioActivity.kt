@@ -205,57 +205,67 @@ class VideoStickerStudioActivity : AppCompatActivity() {
     private fun loadVideo(uri: Uri) {
         selectedVideoUri = uri
 
-        val retriever = MediaMetadataRetriever()
-        var durationMs = 0L
-        try {
-            retriever.setDataSource(this, uri)
-            val durStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-            durationMs = durStr?.toLongOrNull() ?: 0L
-        } catch (e: Exception) {
-            Toast.makeText(this, "No se pudo leer el video seleccionado", Toast.LENGTH_SHORT).show()
-            return
-        } finally {
-            try {
-                retriever.release()
-            } catch (_: Exception) {}
+        lifecycleScope.launch {
+            val (durationMs, audioDetected) = withContext(Dispatchers.IO) {
+                val retriever = MediaMetadataRetriever()
+                var dur = 0L
+                try {
+                    retriever.setDataSource(this@VideoStickerStudioActivity, uri)
+                    val durStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    dur = durStr?.toLongOrNull() ?: 0L
+                } catch (_: Exception) {
+                    dur = -1L
+                } finally {
+                    try {
+                        retriever.release()
+                    } catch (_: Exception) {}
+                }
+                val hasAudio = if (dur > 0L) detectAudioTrack(uri) else false
+                Pair(dur, hasAudio)
+            }
+
+            if (durationMs < 0L) {
+                Toast.makeText(this@VideoStickerStudioActivity, "No se pudo leer el video seleccionado", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            if (durationMs == 0L) {
+                Toast.makeText(this@VideoStickerStudioActivity, "Video inválido o vacío", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            hasAudioTrack = audioDetected
+            videoDurationSec = (durationMs / 1000f).coerceAtLeast(MIN_STICKER_DURATION_SEC)
+            trimStartSec = 0f
+            trimEndSec = min(videoDurationSec, MAX_STICKER_DURATION_SEC)
+
+            binding.layoutEmptyVideo.visibility = View.GONE
+            binding.layoutEditor.visibility = View.VISIBLE
+            binding.layoutBottomExport.visibility = View.VISIBLE
+            binding.btnChangeVideo.visibility = View.VISIBLE
+
+            isUpdatingSlider = true
+            binding.rangeSliderTrim.valueFrom = 0f
+            binding.rangeSliderTrim.valueTo = videoDurationSec
+            binding.rangeSliderTrim.stepSize = 0f
+            binding.rangeSliderTrim.setValues(trimStartSec, trimEndSec)
+            isUpdatingSlider = false
+
+            if (hasAudioTrack) {
+                binding.switchIncludeAudio.isEnabled = true
+                binding.switchIncludeAudio.isChecked = true
+                binding.tvAudioStatusDesc.text = getString(R.string.include_audio_desc)
+            } else {
+                binding.switchIncludeAudio.isChecked = false
+                binding.switchIncludeAudio.isEnabled = false
+                binding.tvAudioStatusDesc.text = getString(R.string.no_audio_track_detected)
+            }
+
+            updateAudioBadge(hasAudioTrack && binding.switchIncludeAudio.isChecked)
+            updateTrimLabels()
+            initPlayer()
+            applyClippedPreview()
         }
-
-        if (durationMs <= 0L) {
-            Toast.makeText(this, "Video inválido o vacío", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        hasAudioTrack = detectAudioTrack(uri)
-        videoDurationSec = (durationMs / 1000f).coerceAtLeast(MIN_STICKER_DURATION_SEC)
-        trimStartSec = 0f
-        trimEndSec = min(videoDurationSec, MAX_STICKER_DURATION_SEC)
-
-        binding.layoutEmptyVideo.visibility = View.GONE
-        binding.layoutEditor.visibility = View.VISIBLE
-        binding.layoutBottomExport.visibility = View.VISIBLE
-        binding.btnChangeVideo.visibility = View.VISIBLE
-
-        isUpdatingSlider = true
-        binding.rangeSliderTrim.valueFrom = 0f
-        binding.rangeSliderTrim.valueTo = videoDurationSec
-        binding.rangeSliderTrim.stepSize = 0f
-        binding.rangeSliderTrim.setValues(trimStartSec, trimEndSec)
-        isUpdatingSlider = false
-
-        if (hasAudioTrack) {
-            binding.switchIncludeAudio.isEnabled = true
-            binding.switchIncludeAudio.isChecked = true
-            binding.tvAudioStatusDesc.text = getString(R.string.include_audio_desc)
-        } else {
-            binding.switchIncludeAudio.isChecked = false
-            binding.switchIncludeAudio.isEnabled = false
-            binding.tvAudioStatusDesc.text = getString(R.string.no_audio_track_detected)
-        }
-
-        updateAudioBadge(hasAudioTrack && binding.switchIncludeAudio.isChecked)
-        updateTrimLabels()
-        initPlayer()
-        applyClippedPreview()
     }
 
     private fun detectAudioTrack(uri: Uri): Boolean {

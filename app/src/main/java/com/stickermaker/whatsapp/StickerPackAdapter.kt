@@ -31,10 +31,15 @@ class StickerPackAdapter(
         }
 
     val selectedPackIds = mutableSetOf<String>()
+    private var whitelistedPackIds: Set<String> = emptySet()
+
+    fun updateWhitelistedIds(ids: Set<String>) {
+        whitelistedPackIds = ids
+    }
 
     fun selectAll(context: android.content.Context) {
         selectedPackIds.clear()
-        val selectable = packs.filter { !WhatsAppChecker.isPackWhitelisted(context, it.identifier) }
+        val selectable = packs.filter { !whitelistedPackIds.contains(it.identifier) }
         selectedPackIds.addAll(selectable.map { it.identifier })
         onSelectionChanged(selectedPackIds.size)
         notifyDataSetChanged()
@@ -84,8 +89,8 @@ class StickerPackAdapter(
                 }
             }
 
-            // Check if already in WhatsApp
-            val isWhitelisted = WhatsAppChecker.isPackWhitelisted(context, pack.identifier)
+            // Check if already in WhatsApp (instant in-memory cache lookup)
+            val isWhitelisted = whitelistedPackIds.contains(pack.identifier)
             if (isWhitelisted) {
                 binding.btnAddToWhatsApp.text = context.getString(R.string.added_to_whatsapp)
                 binding.btnAddToWhatsApp.setIconResource(R.drawable.ic_check)
