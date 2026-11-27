@@ -122,4 +122,11 @@
     <string name="no_results_desc">No packs found matching \"%1$s\".</string>
     <string name="section_tools_whatsapp">Creation &amp; WhatsApp</string>
     <string name="section_backup_settings">Backup &amp; Settings</string>
+    <string name="quick_add_title">Add or Create</string>
+    <string name="quick_import_sticker">🖼️ Import Sticker / Image (Direct)</string>
+    <string name="quick_video_studio">🎬 Create from Video (max 10s)</string>
+    <string name="quick_create_pack">📦 Create Empty Pack</string>
+    <string name="default_quick_static_pack">Quick Stickers</string>
+    <string name="default_quick_animated_pack">Animated Stickers</string>
+    <string name="quick_import_success">%1$d sticker(s) imported into \"%2$s\".</string>
 </resources>

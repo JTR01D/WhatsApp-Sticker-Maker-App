@@ -75,6 +75,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    private val importQuickStickersLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            if (uris.isNotEmpty()) {
+                importQuickStickers(uris)
+            }
+        }
+
     private var pendingExportZipFile: File? = null
 
     private val createDocumentLauncher =
@@ -387,7 +394,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnDjiAction.setOnClickListener {
-            showCreatePackDialog()
+            showQuickAddMenu()
         }
 
         binding.btnEmptyCreate.setOnClickListener {
@@ -1072,6 +1079,107 @@ class MainActivity : AppCompatActivity() {
             binding.recyclerViewPacks.visibility = View.VISIBLE
             if (!adapter.isSelectionMode) {
                 binding.layoutDjiBottomBar.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun showQuickAddMenu() {
+        val options = arrayOf(
+            getString(R.string.quick_import_sticker),
+            getString(R.string.quick_video_studio),
+            getString(R.string.quick_create_pack)
+        )
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.quick_add_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> importQuickStickersLauncher.launch(arrayOf("image/*"))
+                    1 -> startActivity(Intent(this, VideoStickerStudioActivity::class.java))
+                    2 -> showCreatePackDialog()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        applyLiquidGlassDialog(dialog)
+        dialog.show()
+    }
+
+    private fun importQuickStickers(uris: List<Uri>) {
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setMessage(R.string.processing_images)
+            .setCancelable(false)
+            .create()
+        applyLiquidGlassDialog(progressDialog)
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                var addedCount = 0
+                var lastTargetPack: StickerPack? = null
+
+                fun findOrCreateTargetPack(isAnimated: Boolean): StickerPack {
+                    val preferredName = getString(
+                        if (isAnimated) R.string.default_quick_animated_pack else R.string.default_quick_static_pack
+                    )
+                    val allPacks = StickerStorage.getAllPacks(this@MainActivity)
+                    val existing = allPacks.firstOrNull {
+                        it.name.startsWith(preferredName) &&
+                        (it.stickers.isEmpty() || it.animatedStickerPack == isAnimated) &&
+                        it.stickers.size < 30
+                    } ?: allPacks.firstOrNull {
+                        !it.name.startsWith("Mis Stickers") &&
+                        (it.stickers.isEmpty() || it.animatedStickerPack == isAnimated) &&
+                        it.stickers.size < 30
+                    }
+
+                    if (existing != null) return existing
+
+                    val existingNames = allPacks.map { it.name }.toSet()
+                    var finalName = preferredName
+                    var idx = 2
+                    while (existingNames.contains(finalName)) {
+                        finalName = "$preferredName $idx"
+                        idx++
+                    }
+                    val created = StickerPack(
+                        identifier = UUID.randomUUID().toString(),
+                        name = finalName,
+                        publisher = "Personal",
+                        trayImageFile = "",
+                        animatedStickerPack = isAnimated
+                    )
+                    StickerStorage.savePack(this@MainActivity, created)
+                    return created
+                }
+
+                for (uri in uris) {
+                    val isAnimated = ImageProcessor.isAnimatedWebP(this@MainActivity, uri)
+                    val target = findOrCreateTargetPack(isAnimated)
+                    if (StickerStorage.addStickerToPack(this@MainActivity, target.identifier, uri)) {
+                        addedCount++
+                        lastTargetPack = target
+                    }
+                }
+                Pair(addedCount, lastTargetPack)
+            }
+
+            progressDialog.dismiss()
+            loadPacks()
+
+            val (addedCount, targetPack) = result
+            if (addedCount > 0 && targetPack != null) {
+                val doneDialog = MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("✅ Stickers")
+                    .setMessage(getString(R.string.quick_import_success, addedCount, targetPack.name))
+                    .setPositiveButton(R.string.open_pack) { _, _ ->
+                        openPackDetail(targetPack.identifier)
+                    }
+                    .setNegativeButton(R.string.done, null)
+                    .create()
+                applyLiquidGlassDialog(doneDialog)
+                doneDialog.show()
+            } else {
+                Toast.makeText(this@MainActivity, "No se pudo importar la imagen seleccionada", Toast.LENGTH_SHORT).show()
             }
         }
     }
