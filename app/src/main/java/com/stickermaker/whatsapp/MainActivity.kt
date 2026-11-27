@@ -186,6 +186,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         // WhatsApp 1: Escanear stickers de WhatsApp
+        optionsBinding.cardOptionVideoStudio.setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, VideoStickerStudioActivity::class.java))
+        }
+
         optionsBinding.cardOptionScanWhatsApp.setOnClickListener {
             dialog.dismiss()
             checkAndScanWhatsAppStickers()

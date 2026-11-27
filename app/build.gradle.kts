@@ -11,8 +11,8 @@ android {
         applicationId = "com.stickermaker.whatsapp"
         minSdk = 24
         targetSdk = 34
-        versionCode = 46
-        versionName = "1.3.17"
+        versionCode = 47
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -81,4 +81,12 @@ dependencies {
 
     // JSON serialization
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Jetpack Media3 (Offline Video Trimmer, Audio Muxing & 512x512 Scaling)
+    val media3Version = "1.3.1"
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-transformer:$media3Version")
+    implementation("androidx.media3:media3-effect:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
+    implementation("androidx.media3:media3-common:$media3Version")
 }

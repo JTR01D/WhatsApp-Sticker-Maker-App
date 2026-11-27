@@ -82,4 +82,27 @@
     <string name="delete_all_confirm_btn">Clear All</string>
     <string name="delete_selected_packs_title">Delete %1$d packs?</string>
     <string name="delete_selected_packs_msg">The %1$d selected packs will be deleted from the application.\n\nStickers already added to WhatsApp will remain unaffected.</string>
+
+    <!-- Video Sticker Studio (Audio • 10s) -->
+    <string name="option_video_studio">Video to Sticker Studio (Audio)</string>
+    <string name="option_video_studio_desc">Trim videos (max 10s) to 512×512 with sound for WhatsApp</string>
+    <string name="video_studio_title">Sticker Studio</string>
+    <string name="video_studio_subtitle">Video with Audio • Max 10 seconds</string>
+    <string name="select_video">Select Video</string>
+    <string name="change_video">Change</string>
+    <string name="video_studio_empty_title">Create sound stickers</string>
+    <string name="video_studio_empty_desc">Pick any video from your gallery, trim up to 10 seconds in 512×512 square format, and export with audio ready for WhatsApp\'s creator.</string>
+    <string name="trim_range_title">Trim Range (max 10.0s)</string>
+    <string name="crop_mode_title">1:1 Framing (512×512)</string>
+    <string name="crop_mode_fill">Crop (Fill)</string>
+    <string name="crop_mode_fit">Fit (Full)</string>
+    <string name="include_audio_title">Include Original Audio</string>
+    <string name="include_audio_desc">Keep the sound track in the exported clip</string>
+    <string name="no_audio_track_detected">This video has no audio track</string>
+    <string name="export_audio_sticker_btn">Export Clip (MP4 ≤ 10s)</string>
+    <string name="exporting_video_progress">Processing video &amp; audio (512×512)…</string>
+    <string name="export_success_title">Clip ready for WhatsApp!</string>
+    <string name="export_success_msg">Saved to Gallery (Movies/StickerMaker).\n\nTo use as a sound sticker:\n1. Open WhatsApp Stickers → Create (+).\n2. Pick this video and enable the sound icon.</string>
+    <string name="share_to_whatsapp">Share to WhatsApp</string>
+    <string name="done">Done</string>
 </resources>

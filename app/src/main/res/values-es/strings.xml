@@ -82,4 +82,27 @@
     <string name="delete_all_confirm_btn">Vaciar Todo</string>
     <string name="delete_selected_packs_title">¿Eliminar %1$d paquetes?</string>
     <string name="delete_selected_packs_msg">Se eliminarán los %1$d paquetes seleccionados de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.</string>
+
+    <!-- Video Sticker Studio (Audio • 10s) -->
+    <string name="option_video_studio">Estudio Video a Sticker (Audio)</string>
+    <string name="option_video_studio_desc">Recorta videos (máx. 10s) en 512×512 con sonido para WhatsApp</string>
+    <string name="video_studio_title">Estudio de Stickers</string>
+    <string name="video_studio_subtitle">Video con Audio • Máx. 10 segundos</string>
+    <string name="select_video">Seleccionar Video</string>
+    <string name="change_video">Cambiar</string>
+    <string name="video_studio_empty_title">Crea stickers con sonido</string>
+    <string name="video_studio_empty_desc">Elige cualquier video de tu galería, recorta hasta 10 segundos en formato cuadrado 512×512 y expórtalo con audio listo para el creador de WhatsApp.</string>
+    <string name="trim_range_title">Recorte (máx. 10.0s)</string>
+    <string name="crop_mode_title">Encuadre 1:1 (512×512)</string>
+    <string name="crop_mode_fill">Recortar (Lleno)</string>
+    <string name="crop_mode_fit">Ajustar (Completo)</string>
+    <string name="include_audio_title">Incluir Audio Original</string>
+    <string name="include_audio_desc">Conserva la pista de sonido en el clip exportado</string>
+    <string name="no_audio_track_detected">Este video no contiene pista de audio</string>
+    <string name="export_audio_sticker_btn">Exportar Clip (MP4 ≤ 10s)</string>
+    <string name="exporting_video_progress">Procesando video y audio (512×512)…</string>
+    <string name="export_success_title">¡Clip listo para WhatsApp!</string>
+    <string name="export_success_msg">Guardado en Galería (Movies/StickerMaker).\n\nPara usarlo como sticker con sonido:\n1. En WhatsApp abre Stickers → Crear (+).\n2. Selecciona este video y activa el ícono de sonido.</string>
+    <string name="share_to_whatsapp">Compartir en WhatsApp</string>
+    <string name="done">Listo</string>
 </resources>
