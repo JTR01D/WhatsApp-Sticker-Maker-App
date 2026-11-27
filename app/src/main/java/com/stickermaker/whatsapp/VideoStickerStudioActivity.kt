@@ -425,26 +425,48 @@ class VideoStickerStudioActivity : AppCompatActivity() {
             .filter { (it.stickers.isEmpty() || it.animatedStickerPack) && it.stickers.size < 30 }
 
         if (compatiblePacks.isEmpty()) {
-            showCreateAnimatedPackDialog()
+            val autoPack = createAutoAnimatedPack()
+            encodeAndSaveWebpToPack(autoPack)
             return
         }
 
         val items = compatiblePacks.map { "${it.name} (${it.stickers.size}/30)" }.toMutableList()
+        items.add(getString(R.string.auto_new_animated_pack))
         items.add(getString(R.string.create_new_animated_pack))
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.choose_pack_title)
             .setItems(items.toTypedArray()) { _, which ->
-                if (which == items.lastIndex) {
-                    showCreateAnimatedPackDialog()
-                } else {
-                    encodeAndSaveWebpToPack(compatiblePacks[which])
+                when (which) {
+                    items.lastIndex -> showCreateAnimatedPackDialog()
+                    items.lastIndex - 1 -> encodeAndSaveWebpToPack(createAutoAnimatedPack())
+                    else -> encodeAndSaveWebpToPack(compatiblePacks[which])
                 }
             }
             .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.window?.setBackgroundDrawableResource(R.drawable.bg_liquid_glass_dialog)
         dialog.show()
+    }
+
+    private fun createAutoAnimatedPack(): StickerPack {
+        val baseName = getString(R.string.default_video_pack_name)
+        val existingNames = StickerStorage.getAllPacks(this).map { it.name }.toSet()
+        var finalName = baseName
+        var counter = 2
+        while (existingNames.contains(finalName)) {
+            finalName = "$baseName $counter"
+            counter++
+        }
+        val newPack = StickerPack(
+            identifier = UUID.randomUUID().toString(),
+            name = finalName,
+            publisher = "Personal",
+            trayImageFile = "",
+            animatedStickerPack = true
+        )
+        StickerStorage.savePack(this, newPack)
+        return newPack
     }
 
     private fun showCreateAnimatedPackDialog() {

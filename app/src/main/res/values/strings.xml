@@ -109,6 +109,8 @@
     <string name="exporting_webp_progress">Creando sticker animado .webp (≤ 500 KB)…</string>
     <string name="choose_pack_title">Guardar en Paquete</string>
     <string name="create_new_animated_pack">+ Crear nuevo paquete animado</string>
+    <string name="auto_new_animated_pack">⚡ Nuevo paquete automático</string>
+    <string name="default_video_pack_name">Stickers de Video</string>
     <string name="sticker_saved_to_pack_msg">Sticker animado guardado en \"%1$s\" (%2$s).</string>
     <string name="open_pack">Abrir Paquete</string>
     <string name="badge_packs_all">%1$d paquetes</string>
