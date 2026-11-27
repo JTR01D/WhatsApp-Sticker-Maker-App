@@ -83,15 +83,15 @@
     <string name="delete_selected_packs_title">¿Eliminar %1$d paquetes?</string>
     <string name="delete_selected_packs_msg">Se eliminarán los %1$d paquetes seleccionados de la aplicación.\n\nLos stickers que ya hayas añadido a WhatsApp no se verán afectados.</string>
 
-    <!-- Video Sticker Studio (Audio • 10s) -->
-    <string name="option_video_studio">Estudio Video a Sticker (Audio)</string>
-    <string name="option_video_studio_desc">Recorta videos (máx. 10s) en 512×512 con sonido para WhatsApp</string>
+    <!-- Video Sticker Studio (WebP + MP4 • 10s) -->
+    <string name="option_video_studio">Estudio Video a Sticker</string>
+    <string name="option_video_studio_desc">Convierte videos (máx. 10s) en stickers .webp animados o clips MP4</string>
     <string name="video_studio_title">Estudio de Stickers</string>
-    <string name="video_studio_subtitle">Video con Audio • Máx. 10 segundos</string>
+    <string name="video_studio_subtitle">Video → Sticker .webp • Máx. 10 segundos</string>
     <string name="select_video">Seleccionar Video</string>
     <string name="change_video">Cambiar</string>
-    <string name="video_studio_empty_title">Crea stickers con sonido</string>
-    <string name="video_studio_empty_desc">Elige cualquier video de tu galería, recorta hasta 10 segundos en formato cuadrado 512×512 y expórtalo con audio listo para el creador de WhatsApp.</string>
+    <string name="video_studio_empty_title">Convierte videos en stickers</string>
+    <string name="video_studio_empty_desc">Elige cualquier video, recorta hasta 10 segundos en 512×512 y guárdalo directo como sticker animado .webp en tu colección o expórtalo como MP4.</string>
     <string name="trim_range_title">Recorte (máx. 10.0s)</string>
     <string name="crop_mode_title">Encuadre 1:1 (512×512)</string>
     <string name="crop_mode_fill">Recortar (Lleno)</string>
@@ -120,4 +120,6 @@
     <string name="empty_animated_desc">No tienes paquetes de stickers animados aún.</string>
     <string name="no_results_title">Sin resultados</string>
     <string name="no_results_desc">No se encontraron paquetes que coincidan con \"%1$s\".</string>
+    <string name="section_tools_whatsapp">Creación y WhatsApp</string>
+    <string name="section_backup_settings">Respaldo y Ajustes</string>
 </resources>

@@ -83,15 +83,15 @@
     <string name="delete_selected_packs_title">Delete %1$d packs?</string>
     <string name="delete_selected_packs_msg">The %1$d selected packs will be deleted from the application.\n\nStickers already added to WhatsApp will remain unaffected.</string>
 
-    <!-- Video Sticker Studio (Audio • 10s) -->
-    <string name="option_video_studio">Video to Sticker Studio (Audio)</string>
-    <string name="option_video_studio_desc">Trim videos (max 10s) to 512×512 with sound for WhatsApp</string>
+    <!-- Video Sticker Studio (WebP + MP4 • 10s) -->
+    <string name="option_video_studio">Video to Sticker Studio</string>
+    <string name="option_video_studio_desc">Convert videos (max 10s) into animated .webp stickers or MP4 clips</string>
     <string name="video_studio_title">Sticker Studio</string>
-    <string name="video_studio_subtitle">Video with Audio • Max 10 seconds</string>
+    <string name="video_studio_subtitle">Video → .webp Sticker • Max 10 seconds</string>
     <string name="select_video">Select Video</string>
     <string name="change_video">Change</string>
-    <string name="video_studio_empty_title">Create sound stickers</string>
-    <string name="video_studio_empty_desc">Pick any video from your gallery, trim up to 10 seconds in 512×512 square format, and export with audio ready for WhatsApp\'s creator.</string>
+    <string name="video_studio_empty_title">Turn videos into stickers</string>
+    <string name="video_studio_empty_desc">Pick any video, trim up to 10 seconds in 512×512, and save it directly as an animated .webp sticker in your collection or export as MP4.</string>
     <string name="trim_range_title">Trim Range (max 10.0s)</string>
     <string name="crop_mode_title">1:1 Framing (512×512)</string>
     <string name="crop_mode_fill">Crop (Fill)</string>
@@ -120,4 +120,6 @@
     <string name="empty_animated_desc">You don\'t have any animated sticker packs yet.</string>
     <string name="no_results_title">No results</string>
     <string name="no_results_desc">No packs found matching \"%1$s\".</string>
+    <string name="section_tools_whatsapp">Creation &amp; WhatsApp</string>
+    <string name="section_backup_settings">Backup &amp; Settings</string>
 </resources>

@@ -1014,7 +1014,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         displayedPacks.clear()
-        displayedPacks.addAll(filtered)
+        displayedPacks.addAll(filtered.sortedBy { it.name.startsWith("Mis Stickers") })
         adapter.notifyDataSetChanged()
 
         val totalAll = packsList.size
