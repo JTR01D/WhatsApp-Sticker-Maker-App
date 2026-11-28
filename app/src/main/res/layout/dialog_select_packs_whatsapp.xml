@@ -108,8 +108,7 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewSelectPacks"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxHeight="320dp"
+        android:layout_height="260dp"
         android:nestedScrollingEnabled="true"
         tools:itemCount="4"
         tools:listitem="@layout/item_pack_select" />

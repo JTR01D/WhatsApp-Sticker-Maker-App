@@ -1084,23 +1084,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showQuickAddMenu() {
-        val options = arrayOf(
-            getString(R.string.quick_import_sticker),
-            getString(R.string.quick_video_studio),
-            getString(R.string.quick_create_pack)
-        )
+        val quickBinding = com.stickermaker.whatsapp.databinding.DialogQuickAddBinding.inflate(layoutInflater)
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.quick_add_title)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> importQuickStickersLauncher.launch(arrayOf("image/*", "video/webm"))
-                    1 -> startActivity(Intent(this, VideoStickerStudioActivity::class.java))
-                    2 -> showCreatePackDialog()
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
+            .setView(quickBinding.root)
             .create()
         applyLiquidGlassDialog(dialog)
+
+        quickBinding.btnCloseQuickAdd.setOnClickListener { dialog.dismiss() }
+        quickBinding.cardQuickImportSticker.setOnClickListener {
+            dialog.dismiss()
+            importQuickStickersLauncher.launch(arrayOf("image/*", "video/webm"))
+        }
+        quickBinding.cardQuickVideoStudio.setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, VideoStickerStudioActivity::class.java))
+        }
+        quickBinding.cardQuickCreatePack.setOnClickListener {
+            dialog.dismiss()
+            showCreatePackDialog()
+        }
+
         dialog.show()
     }
 

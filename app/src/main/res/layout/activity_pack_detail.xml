@@ -147,13 +147,13 @@
                         android:backgroundTint="@color/btn_whatsapp_bg"
                         android:paddingVertical="13dp"
                         android:text="@string/add_to_whatsapp"
-                        android:textColor="@color/btn_whatsapp_text"
+                        android:textColor="@color/white"
                         android:textSize="15sp"
                         android:textStyle="bold"
                         app:cornerRadius="14dp"
                         app:icon="@drawable/ic_whatsapp"
                         app:iconGravity="textStart"
-                        app:iconTint="@color/btn_whatsapp_text" />
+                        app:iconTint="@color/white" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnExportZip"
