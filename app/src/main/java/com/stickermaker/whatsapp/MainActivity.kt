@@ -1093,7 +1093,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.quick_add_title)
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> importQuickStickersLauncher.launch(arrayOf("image/*"))
+                    0 -> importQuickStickersLauncher.launch(arrayOf("image/*", "video/webm"))
                     1 -> startActivity(Intent(this, VideoStickerStudioActivity::class.java))
                     2 -> showCreatePackDialog()
                 }
@@ -1153,11 +1153,43 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 for (uri in uris) {
-                    val isAnimated = ImageProcessor.isAnimatedWebP(this@MainActivity, uri)
-                    val target = findOrCreateTargetPack(isAnimated)
-                    if (StickerStorage.addStickerToPack(this@MainActivity, target.identifier, uri)) {
-                        addedCount++
-                        lastTargetPack = target
+                    val mime = contentResolver.getType(uri)?.lowercase().orEmpty()
+                    val isWebm = mime == "video/webm" || uri.toString().lowercase().endsWith(".webm")
+                    if (isWebm) {
+                        val tempWebp = File(cacheDir, "wsm_webm_${System.currentTimeMillis()}.webp")
+                        val retriever = android.media.MediaMetadataRetriever()
+                        var durMs = 3000L
+                        try {
+                            retriever.setDataSource(this@MainActivity, uri)
+                            durMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                ?.toLongOrNull()?.coerceIn(300L, 10_000L) ?: 3000L
+                        } catch (_: Exception) {
+                        } finally {
+                            try { retriever.release() } catch (_: Exception) {}
+                        }
+                        val enc = com.stickermaker.whatsapp.utils.AnimatedWebpEncoder.encodeVideoToAnimatedWebp(
+                            context = this@MainActivity,
+                            videoUri = uri,
+                            startMs = 0L,
+                            endMs = durMs,
+                            isCropFill = true,
+                            outputFile = tempWebp
+                        ) {}
+                        if (enc.success) {
+                            val target = findOrCreateTargetPack(true)
+                            if (StickerStorage.addStickerToPack(this@MainActivity, target.identifier, Uri.fromFile(tempWebp))) {
+                                addedCount++
+                                lastTargetPack = target
+                            }
+                        }
+                        tempWebp.delete()
+                    } else {
+                        val isAnimated = ImageProcessor.isAnimatedWebP(this@MainActivity, uri)
+                        val target = findOrCreateTargetPack(isAnimated)
+                        if (StickerStorage.addStickerToPack(this@MainActivity, target.identifier, uri)) {
+                            addedCount++
+                            lastTargetPack = target
+                        }
                     }
                 }
                 Pair(addedCount, lastTargetPack)

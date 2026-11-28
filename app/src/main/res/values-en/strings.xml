@@ -129,4 +129,9 @@
     <string name="default_quick_static_pack">Quick Stickers</string>
     <string name="default_quick_animated_pack">Animated Stickers</string>
     <string name="quick_import_success">%1$d sticker(s) imported into \"%2$s\".</string>
+    <string name="select_image_for_audio">Image / Sticker + Audio</string>
+    <string name="pick_external_audio">Pick Audio (MP3, OGG, WAV)</string>
+    <string name="external_audio_selected">External audio: %1$s</string>
+    <string name="max_duration_limit">Limit:</string>
+    <string name="need_audio_for_image">Pick an audio file to combine with the image</string>
 </resources>
