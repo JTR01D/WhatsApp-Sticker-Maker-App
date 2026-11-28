@@ -24,7 +24,7 @@ object AnimatedWebpEncoder {
 
     private const val STICKER_SIZE = 512
     private const val MAX_OUTPUT_BYTES = 490 * 1024 // Stay safely below WhatsApp's 500 KB cap
-    private const val MAX_FRAMES = 48
+    private const val MAX_FRAMES = 90
 
     data class EncodeResult(
         val success: Boolean,
@@ -43,8 +43,8 @@ object AnimatedWebpEncoder {
         onProgress: (Int) -> Unit
     ): EncodeResult {
         val durationMs = (endMs - startMs).coerceAtLeast(300L)
-        val targetFps = 8f
-        val desiredFrames = ((durationMs / 1000f) * targetFps).roundToInt().coerceIn(4, MAX_FRAMES)
+        val targetFps = 15f
+        val desiredFrames = ((durationMs / 1000f) * targetFps).roundToInt().coerceIn(6, MAX_FRAMES)
         val stepMs = durationMs.toDouble() / desiredFrames.toDouble()
 
         val retriever = MediaMetadataRetriever()
@@ -54,8 +54,17 @@ object AnimatedWebpEncoder {
             retriever.setDataSource(context, videoUri)
             for (i in 0 until desiredFrames) {
                 val timeUs = ((startMs + (i * stepMs)).toLong()) * 1000L
-                val rawBitmap = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
-                    ?: retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                val rawBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    retriever.getScaledFrameAtTime(
+                        timeUs,
+                        MediaMetadataRetriever.OPTION_CLOSEST,
+                        STICKER_SIZE * 2,
+                        STICKER_SIZE * 2
+                    ) ?: retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                } else {
+                    retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                        ?: retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                }
                 if (rawBitmap != null) {
                     val formatted = formatSquareFrame(rawBitmap, isCropFill)
                     if (rawBitmap !== formatted) {
@@ -80,13 +89,16 @@ object AnimatedWebpEncoder {
         }
 
         try {
-            // Adaptive compression passes to guarantee <= 490 KB
+            // Prioritize keeping FULL FPS fluid motion by reducing quality first,
+            // and only drop frames as a last resort if still over 490 KB.
+            val halfFrames = downsampleFrames(frames)
             val attempts = listOf(
-                Pair(frames, 60),
-                Pair(frames, 40),
-                Pair(downsampleFrames(frames), 45),
-                Pair(downsampleFrames(frames), 28),
-                Pair(downsampleFrames(downsampleFrames(frames)), 22)
+                Pair(frames, 52),
+                Pair(frames, 36),
+                Pair(frames, 24),
+                Pair(frames, 16),
+                Pair(halfFrames, 24),
+                Pair(halfFrames, 14)
             )
 
             var bestBytes: ByteArray? = null
@@ -204,7 +216,7 @@ object AnimatedWebpEncoder {
             writeLe24(header, 6, STICKER_SIZE - 1)
             writeLe24(header, 9, STICKER_SIZE - 1)
             writeLe24(header, 12, frameDurationMs)
-            header[15] = 0x03.toByte() // Dispose to background + no alpha blending
+            header[15] = 0x02.toByte() // Do not dispose (0) + no alpha blending (1) avoids inter-frame flicker
             anmfOut.write(header)
             anmfOut.write(frameChunks)
             writeChunk(body, "ANMF", anmfOut.toByteArray())
