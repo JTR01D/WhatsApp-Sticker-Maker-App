@@ -45,4 +45,5 @@
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <color name="fab_tint">#0B141A</color>
+    <color name="scrim_mid">#CC0B141A</color>
 </resources>

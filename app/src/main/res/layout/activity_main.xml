@@ -53,15 +53,15 @@
                         android:textSize="12sp" />
                 </LinearLayout>
 
-                <!-- Search Button -->
+                <!-- Search Button (BitChord frosted glass style) -->
                 <FrameLayout
                     android:id="@+id/btnSearchPacks"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    android:background="@drawable/bg_dialog_icon_squircle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_bitchord_glass_pill"
                     android:clickable="true"
                     android:focusable="true"
-                    android:foreground="?attr/selectableItemBackgroundBorderless">
+                    android:foreground="@drawable/bg_dji_circle_ripple">
 
                     <ImageView
                         android:layout_width="20dp"
@@ -212,6 +212,14 @@
         </LinearLayout>
 
     </FrameLayout>
+
+    <!-- BitChord-style Bottom Fade Scrim under Floating Dock -->
+    <View
+        android:id="@+id/bottomFadeScrim"
+        android:layout_width="match_parent"
+        android:layout_height="136dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_bottom_fade_scrim" />
 
     <!-- Floating Bottom Navigation Dock (DJI Mimo Style) -->
     <LinearLayout
